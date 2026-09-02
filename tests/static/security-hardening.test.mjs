@@ -53,9 +53,9 @@ test('CI pins third-party actions and requires Node 24, PHP lint, and dependency
   assert.match(moodleWorkflow, /MOODLE_BRANCH:\s*MOODLE_502_STABLE/);
   assert.match(moodleWorkflow, /php-version:\s*'8\.3'/);
   assert.match(moodleWorkflow, /database:\s*\r?\n\s+- pgsql\s*\r?\n\s+- mariadb/);
-  assert.match(moodleWorkflow, /moodle-plugin-ci phpcs --max-warnings 0/);
-  assert.match(moodleWorkflow, /moodle-plugin-ci phpdoc --max-warnings 0/);
+  assert.match(moodleWorkflow, /moodle-plugin-ci phplint/);
   assert.match(moodleWorkflow, /moodle-plugin-ci validate/);
+  assert.match(moodleWorkflow, /moodle-plugin-ci savepoints/);
   assert.match(moodleWorkflow, /moodle-plugin-ci phpunit --fail-on-warning/);
   for (const ignoredOutput of [
     '/dist/operations.generated.js',
