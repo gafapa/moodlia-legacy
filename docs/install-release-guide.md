@@ -2,9 +2,47 @@
 
 This guide describes how to install, verify, and release MoodlIA in another Moodle instance.
 
+## Moodle Marketplace Preflight
+
+The Marketplace package is built from `plugin/moodlia` and must remain a
+standalone, installable Moodle local plugin. Before creating or uploading a
+version, run:
+
+```text
+npm run plugin:boilerplate:check
+npm run plugin:marketplace:check
+npm run release:artifacts
+npm run release:check
+```
+
+Upload the resulting `empaquetado/local_moodlia-<release>.zip`. The archive must
+contain a single `moodlia/` root, declare `local_moodlia` in `version.php`, and
+include `LICENSE`, `README.md`, the English language pack, and the plugin icon.
+Do not add an empty `db/install.xml`; MoodlIA owns no database tables.
+
+The `Moodle Plugin CI` GitHub Actions workflow runs the same tool family used by
+Marketplace against Moodle 5.2 and PHP 8.3 on PostgreSQL and MariaDB. A release
+must not be uploaded while either database job is failing.
+
+Marketplace listing metadata:
+
+- Source code: https://github.com/gafapa/moodlia
+- Issue tracker: https://github.com/gafapa/moodlia/issues
+- Documentation: https://github.com/gafapa/moodlia#readme
+- Component: `local_moodlia`
+- Plugin type: Local plugin
+- Directory name: `moodlia`
+
 ## Versioning Policy
 
 The Moodle plugin and public npm client use independent semantic release streams because they can be published separately. `plugin/moodlia/version.php` is authoritative for the Moodle plugin, while the root `package.json` is authoritative for the npm package and generated `packages/moodlia` mirror. Every change must bump each affected stream and `npm run npm:sync` must refresh the public package mirror.
+
+| Release stream | Current version | Source of truth | Artifact |
+| --- | ---: | --- | --- |
+| Moodle plugin | `0.1.188` | `plugin/moodlia/version.php` | `local_moodlia-0.1.188.zip` |
+| npm CLI/client | `0.1.19` | `package.json` | `moodlia@0.1.19` |
+
+These numbers are not expected to match. Release communication and deployment records must always include the stream name, for example “MoodlIA Moodle plugin 0.1.188” or “moodlia npm 0.1.19”, rather than an unqualified version.
 
 ## Release Scope
 
@@ -14,7 +52,7 @@ The first release uses Moodle core structures only:
 
 - No plugin-owned database tables.
 - No `db/install.xml`.
-- No direct SQL or `$DB` access in plugin behavior.
+- No raw SQL; Moodle-owned records are accessed through Moodle's cross-database DML API.
 - REST functions are declared in `db/services.php`.
 - MCP uses the same Moodle REST token and the same canonical operations.
 - The Node CLI calls Moodle REST directly.

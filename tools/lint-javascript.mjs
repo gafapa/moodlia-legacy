@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const excludedDirectories = new Set(['.git', 'dist', 'node_modules', 'playwright-report', 'playwright-report-site', 'test-results']);
+const excludedDirectories = new Set(['.git', 'empaquetado', 'node_modules', 'playwright-report', 'playwright-report-site', 'test-results']);
 const files = await findJavaScriptFiles(process.cwd());
 
 for (const file of files) {

@@ -1,16 +1,24 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * MCP tool manifest.
  *
  * @package    local_moodlia
- * @copyright  2026
+ * @copyright  2026 Pablo Gallego
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -38,6 +46,45 @@ final class manifest {
                 'name' => 'get_moodlia_status',
                 'description' => 'Return MoodlIA plugin, Moodle site, token, and declared service diagnostics.',
                 'inputSchema' => self::schema([]),
+            ],
+            [
+                'name' => 'list_plugins',
+                'description' => 'Return an administrative inventory of installed, pending, and missing Moodle plugins.',
+                'inputSchema' => self::schema([
+                    'plugin_type' => ['type' => 'string', 'required' => false],
+                    'source' => ['type' => 'string', 'required' => false, 'enum' => ['all', 'standard', 'additional', 'missing']],
+                    'status' => ['type' => 'string', 'required' => false, 'enum' => ['all', 'nodb', 'uptodate', 'new', 'upgrade', 'delete', 'downgrade', 'missing']],
+                ]),
+            ],
+            [
+                'name' => 'get_plugin_details',
+                'description' => 'Return administrative metadata for one installed, pending, or missing Moodle plugin.',
+                'inputSchema' => self::schema([
+                    'component' => ['type' => 'string', 'required' => true],
+                ]),
+            ],
+            [
+                'name' => 'get_plugin_dependencies',
+                'description' => 'Return resolved dependencies and reverse dependencies for one Moodle plugin.',
+                'inputSchema' => self::schema([
+                    'component' => ['type' => 'string', 'required' => true],
+                ]),
+            ],
+            [
+                'name' => 'check_plugin_updates',
+                'description' => 'Return cached Moodle plugin updates and optionally refresh update information from Moodle.org.',
+                'inputSchema' => self::schema([
+                    'component' => ['type' => 'string', 'required' => false],
+                    'refresh' => ['type' => 'boolean', 'required' => false],
+                ]),
+            ],
+            [
+                'name' => 'set_plugin_enabled',
+                'description' => 'Enable or disable one compatible Moodle plugin without installing or removing code.',
+                'inputSchema' => self::schema([
+                    'component' => ['type' => 'string', 'required' => true],
+                    'enabled' => ['type' => 'boolean', 'required' => true],
+                ]),
             ],
             [
                 'name' => 'get_courses',
@@ -903,7 +950,11 @@ final class manifest {
                     'after_page_id' => ['type' => 'integer', 'required' => false],
                     'display_in_menu' => ['type' => 'boolean', 'required' => false],
                     'horizontal' => ['type' => 'boolean', 'required' => false],
-                    'page_type' => ['type' => 'string', 'required' => false, 'enum' => ['content', 'multichoice', 'numerical', 'shortanswer', 'truefalse']],
+                    'page_type' => [
+                        'type' => 'string',
+                        'required' => false,
+                        'enum' => ['content', 'essay', 'matching', 'multichoice', 'numerical', 'shortanswer', 'truefalse'],
+                    ],
                     'answers' => ['type' => 'object', 'required' => false],
                 ]),
             ],

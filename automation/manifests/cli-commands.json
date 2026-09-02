@@ -2,6 +2,11 @@
   "commands": [
     "get-current-user",
     "get-moodlia-status",
+    "list-plugins",
+    "get-plugin-details",
+    "get-plugin-dependencies",
+    "check-plugin-updates",
+    "set-plugin-enabled",
     "get-courses",
     "get-course-categories",
     "create-course-category",

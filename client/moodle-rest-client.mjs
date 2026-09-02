@@ -150,7 +150,7 @@ function validateRange(value, definition, key) {
   }
 }
 
-function coerceParameter(value, definition, key) {
+function coerceParameter(value, definition, key, encoding = 'form') {
   if (value === undefined || value === null || value === '') {
     return value;
   }
@@ -194,7 +194,7 @@ function coerceParameter(value, definition, key) {
         throw new MoodleClientError('invalid_parameters', `${key} must be a boolean.`, { parameter: key });
       }
       validateEnum(parsed ? '1' : '0', definition, key);
-      return parsed ? 1 : 0;
+      return encoding === 'json' ? parsed : (parsed ? 1 : 0);
     }
     case 'object': {
       const encoded = typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -207,7 +207,7 @@ function coerceParameter(value, definition, key) {
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         throw new MoodleClientError('invalid_parameters', `${key} must be a JSON object.`, { parameter: key });
       }
-      return encoded;
+      return encoding === 'json' ? parsed : encoded;
     }
     default:
       validateEnum(value, definition, key);
@@ -215,7 +215,13 @@ function coerceParameter(value, definition, key) {
   }
 }
 
-export function buildContractParameters(operation, parameters = {}) {
+export function buildContractParameters(operation, parameters = {}, { encoding = 'form' } = {}) {
+  if (!['form', 'json'].includes(encoding)) {
+    throw new MoodleClientError('invalid_parameters', 'Parameter encoding must be form or json.', {
+      parameter: 'encoding'
+    });
+  }
+
   const result = {};
   const definitions = operation.parameters ?? {};
 
@@ -227,7 +233,7 @@ export function buildContractParameters(operation, parameters = {}) {
       });
     }
     if (value !== undefined && value !== null && value !== '') {
-      result[name] = coerceParameter(value, definition, name);
+      result[name] = coerceParameter(value, definition, name, encoding);
     }
   }
 
@@ -383,6 +389,8 @@ export class RestTransport {
     this.timeoutMs = timeoutMs;
     this.fetchImplementation = fetchImplementation;
     this.allowInsecure = allowInsecure;
+    this.parameterEncoding = 'form';
+    this.supportsCanonicalOperations = false;
   }
 
   async callFunction(functionName, parameters = {}) {
@@ -457,6 +465,285 @@ export class RestTransport {
   }
 }
 
+function normaliseMcpEndpoint(endpoint, { allowInsecure = false } = {}) {
+  let resolved;
+  try {
+    resolved = new URL(endpoint);
+  } catch (error) {
+    throw new MoodleClientError('invalid_parameters', 'MCP endpoint must be a valid URL.', {
+      parameter: 'endpoint'
+    }, error);
+  }
+
+  if (resolved.username || resolved.password) {
+    throw new MoodleClientError('invalid_parameters', 'MCP endpoint must not contain credentials.', {
+      parameter: 'endpoint'
+    });
+  }
+
+  if (resolved.protocol !== 'https:' && !(resolved.protocol === 'http:' && (allowInsecure || isLoopbackHostname(resolved.hostname)))) {
+    throw new MoodleClientError(
+      'invalid_parameters',
+      'MCP endpoint must use HTTPS. HTTP is allowed only for loopback hosts or when allowInsecure is explicitly enabled.',
+      { parameter: 'endpoint', protocol: resolved.protocol }
+    );
+  }
+
+  resolved.hash = '';
+  return resolved;
+}
+
+function mcpErrorFromPayload(error, method, httpStatus = null) {
+  const canonicalCode = typeof error?.data?.code === 'string'
+    ? error.data.code
+    : (httpStatus && httpStatus >= 500 ? 'transport_error' : 'mcp_error');
+  const details = {
+    method,
+    jsonrpc_code: error?.code
+  };
+
+  if (httpStatus !== null) {
+    details.http_status = httpStatus;
+  }
+  if (error?.data?.details && typeof error.data.details === 'object') {
+    Object.assign(details, error.data.details);
+  }
+
+  return new MoodleClientError(
+    canonicalCode,
+    error?.message || 'MCP request failed.',
+    details
+  );
+}
+
+function toolResultError(operationName, result) {
+  const textItem = Array.isArray(result?.content)
+    ? result.content.find((item) => item?.type === 'text' && typeof item.text === 'string')
+    : null;
+  let payload = null;
+
+  if (textItem) {
+    try {
+      payload = JSON.parse(textItem.text);
+    } catch {
+      payload = null;
+    }
+  }
+
+  return new MoodleClientError(
+    typeof payload?.code === 'string' ? payload.code : 'moodle_error',
+    payload?.message || textItem?.text || `MCP operation ${operationName} failed.`,
+    {
+      operation: operationName,
+      ...(payload?.details && typeof payload.details === 'object' ? payload.details : {})
+    }
+  );
+}
+
+export class McpTransport {
+  constructor({
+    baseUrl,
+    endpoint = null,
+    token,
+    timeoutMs = 30000,
+    fetchImplementation = globalThis.fetch,
+    allowInsecure = false,
+    protocolVersion = '2025-11-25',
+    clientInfo = {
+      name: 'moodlia-node-client',
+      version: '1.0.0'
+    }
+  } = {}) {
+    if ((!baseUrl && !endpoint) || !token) {
+      throw new MoodleClientError(
+        'invalid_parameters',
+        'A Moodle base URL or MCP endpoint and a bearer token are required.',
+        { required: ['baseUrl or endpoint', 'token'] }
+      );
+    }
+    if (typeof fetchImplementation !== 'function') {
+      throw new MoodleClientError('invalid_parameters', 'A fetch implementation is required.');
+    }
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
+      throw new MoodleClientError('invalid_parameters', 'timeoutMs must be a non-negative finite number.', {
+        parameter: 'timeoutMs'
+      });
+    }
+    if (!protocolVersion || typeof protocolVersion !== 'string') {
+      throw new MoodleClientError('invalid_parameters', 'protocolVersion must be a non-empty string.', {
+        parameter: 'protocolVersion'
+      });
+    }
+    if (!clientInfo?.name || !clientInfo?.version) {
+      throw new MoodleClientError('invalid_parameters', 'clientInfo must contain name and version.', {
+        parameter: 'clientInfo'
+      });
+    }
+
+    this.endpoint = endpoint
+      ? normaliseMcpEndpoint(endpoint, { allowInsecure }).toString()
+      : resolveMoodleUrl(baseUrl, 'local/moodlia/mcp.php', { allowInsecure }).toString();
+    this.token = String(token);
+    this.timeoutMs = timeoutMs;
+    this.fetchImplementation = fetchImplementation;
+    this.protocolVersion = protocolVersion;
+    this.clientInfo = {
+      name: String(clientInfo.name),
+      version: String(clientInfo.version)
+    };
+    this.parameterEncoding = 'json';
+    this.supportsCanonicalOperations = true;
+    this.requestId = 0;
+    this.initializationResult = null;
+    this.initializationPromise = null;
+  }
+
+  async request(method, params = {}, { notification = false } = {}) {
+    const id = notification ? null : ++this.requestId;
+    const requestPayload = {
+      jsonrpc: '2.0',
+      method,
+      params
+    };
+    if (!notification) {
+      requestPayload.id = id;
+    }
+
+    const controller = new AbortController();
+    const timeout = this.timeoutMs > 0 ? setTimeout(() => controller.abort(), this.timeoutMs) : null;
+
+    try {
+      let response;
+      try {
+        response = await this.fetchImplementation(this.endpoint, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json, text/event-stream',
+            authorization: `Bearer ${this.token}`,
+            'content-type': 'application/json',
+            'mcp-protocol-version': this.protocolVersion
+          },
+          body: JSON.stringify(requestPayload),
+          redirect: 'error',
+          signal: controller.signal
+        });
+      } catch (error) {
+        throw new MoodleClientError('transport_error', `Moodle MCP request failed: ${error.message}`, {
+          method
+        }, error);
+      }
+
+      const text = await response.text();
+      let payload = null;
+      if (text) {
+        try {
+          payload = JSON.parse(text);
+        } catch (error) {
+          throw new MoodleClientError('transport_error', 'Moodle MCP response was not valid JSON.', {
+            method,
+            http_status: response.status
+          }, error);
+        }
+      }
+
+      if (payload?.error) {
+        throw mcpErrorFromPayload(payload.error, method, response.status);
+      }
+      if (!response.ok) {
+        throw new MoodleClientError('transport_error', `Moodle MCP request failed with HTTP ${response.status}.`, {
+          method,
+          http_status: response.status
+        });
+      }
+      if (notification) {
+        return null;
+      }
+      if (!payload || payload.jsonrpc !== '2.0' || payload.id !== id || !Object.hasOwn(payload, 'result')) {
+        throw new MoodleClientError('transport_error', 'Moodle MCP response was not a valid JSON-RPC response.', {
+          method,
+          request_id: id,
+          response_id: payload?.id
+        });
+      }
+
+      return payload.result;
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    }
+  }
+
+  async initialize() {
+    if (this.initializationResult) {
+      return this.initializationResult;
+    }
+    if (!this.initializationPromise) {
+      this.initializationPromise = (async () => {
+        const result = await this.request('initialize', {
+          protocolVersion: this.protocolVersion,
+          capabilities: {},
+          clientInfo: this.clientInfo
+        });
+        if (!result?.protocolVersion) {
+          throw new MoodleClientError('transport_error', 'Moodle MCP initialize response omitted protocolVersion.', {
+            method: 'initialize'
+          });
+        }
+        this.protocolVersion = result.protocolVersion;
+        await this.request('notifications/initialized', {}, { notification: true });
+        this.initializationResult = result;
+        return result;
+      })();
+    }
+
+    try {
+      return await this.initializationPromise;
+    } catch (error) {
+      this.initializationPromise = null;
+      throw error;
+    }
+  }
+
+  async ping() {
+    await this.initialize();
+    return this.request('ping');
+  }
+
+  async listTools() {
+    await this.initialize();
+    const result = await this.request('tools/list');
+    return result?.tools ?? [];
+  }
+
+  async callOperation(operationName, parameters = {}) {
+    await this.initialize();
+    const result = await this.request('tools/call', {
+      name: operationName,
+      arguments: parameters
+    });
+    if (result?.isError) {
+      throw toolResultError(operationName, result);
+    }
+    if (result && Object.hasOwn(result, 'structuredContent')) {
+      return result.structuredContent;
+    }
+
+    const textItem = Array.isArray(result?.content)
+      ? result.content.find((item) => item?.type === 'text' && typeof item.text === 'string')
+      : null;
+    if (textItem) {
+      try {
+        return JSON.parse(textItem.text);
+      } catch {
+        return textItem.text;
+      }
+    }
+
+    return result;
+  }
+}
+
 export class MoodleClient {
   constructor({
     contract,
@@ -467,8 +754,14 @@ export class MoodleClient {
       throw new MoodleClientError('invalid_parameters', 'A valid Moodle operation contract is required.');
     }
 
-    if (!transport || typeof transport.callFunction !== 'function') {
-      throw new MoodleClientError('invalid_parameters', 'A transport with callFunction(functionName, parameters) is required.');
+    if (
+      !transport ||
+      (typeof transport.callFunction !== 'function' && typeof transport.callOperation !== 'function')
+    ) {
+      throw new MoodleClientError(
+        'invalid_parameters',
+        'A transport with callFunction(functionName, parameters) or callOperation(operationName, parameters) is required.'
+      );
     }
 
     this.contract = contract;
@@ -494,10 +787,14 @@ export class MoodleClient {
 
   async call(operationName, parameters = {}) {
     const operation = this.getOperation(operationName);
-    const functionName = toRestFunctionName(this.contract, operation.name);
-    const payload = buildContractParameters(operation, parameters);
-
-    const response = await this.transport.callFunction(functionName, payload);
+    const useCanonicalOperation = this.transport.supportsCanonicalOperations === true ||
+      typeof this.transport.callFunction !== 'function';
+    const encoding = this.transport.parameterEncoding ??
+      (useCanonicalOperation ? 'json' : 'form');
+    const payload = buildContractParameters(operation, parameters, { encoding });
+    const response = useCanonicalOperation
+      ? await this.transport.callOperation(operation.name, payload)
+      : await this.transport.callFunction(toRestFunctionName(this.contract, operation.name), payload);
     return this.validateResponses ? validateContractResponse(operation, response) : response;
   }
 
@@ -506,6 +803,12 @@ export class MoodleClient {
   }
 
   async callFunction(functionName, parameters = {}) {
+    if (typeof this.transport.callFunction !== 'function') {
+      throw new MoodleClientError(
+        'invalid_parameters',
+        'The configured transport does not support raw Moodle function calls.'
+      );
+    }
     return this.transport.callFunction(functionName, parameters);
   }
 }
@@ -563,4 +866,17 @@ export function createMoodleRestClient(options = {}) {
   }
 
   return createMoodleClient(options);
+}
+
+export function createMoodleMcpClient(options = {}) {
+  const transport = options.transport ?? new McpTransport(options);
+  if (!options.contract) {
+    return transport;
+  }
+
+  return proxiedClient(new MoodleClient({
+    contract: options.contract,
+    transport,
+    validateResponses: options.validateResponses ?? true
+  }));
 }

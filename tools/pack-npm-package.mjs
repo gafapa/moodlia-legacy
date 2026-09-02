@@ -4,13 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 const rootDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageDirectory = path.join(rootDirectory, 'packages', 'moodlia');
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const args = ['pack', ...process.argv.slice(2)];
+const npmCliPath = process.env.npm_execpath;
+if (!npmCliPath) {
+  throw new Error('Run this package helper through npm run npm:pack:dry-run.');
+}
+const args = [npmCliPath, 'pack', ...process.argv.slice(2)];
 
-const child = spawn(npmCommand, args, {
+const child = spawn(process.execPath, args, {
   cwd: packageDirectory,
   stdio: 'inherit',
-  shell: process.platform === 'win32'
+  shell: false
 });
 
 child.on('exit', (code) => {

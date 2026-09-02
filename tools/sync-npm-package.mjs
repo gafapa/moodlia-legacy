@@ -38,7 +38,7 @@ function npmPackageJson(rootPackageJson) {
   return {
     name: 'moodlia',
     version: rootPackageJson.version,
-    description: 'Command-line client for the MoodlIA Moodle REST API.',
+    description: 'Command-line and Node client for MoodlIA Moodle automation over REST and MCP.',
     type: 'module',
     license: 'GPL-3.0-or-later',
     author: 'Pablo Gallego',
@@ -76,6 +76,7 @@ function npmPackageJson(rootPackageJson) {
       'moodlia',
       'cli',
       'rest',
+      'mcp',
       'automation'
     ],
     engines: {
@@ -95,7 +96,8 @@ function operationSummary(contract) {
     ['Sections, modules, resources, and files', /(section|module|folder_file|resource_file|folder_files|resource_files|module_details)/],
     ['Assignments, forums, glossaries, wikis, and books', /(assignment|forum|glossary|wiki|book)/],
     ['Choice, Database, Feedback, Lesson, and Workshop', /(choice|data_|feedback|lesson|workshop)/],
-    ['Question banks and quiz workflows', /(question|quiz)/]
+    ['Question banks and quiz workflows', /(question|quiz)/],
+    ['Moodle plugin inventory and state', /plugin/]
   ];
   const operationNames = contract.operations
     .filter((operation) => operation.transports.includes('cli'))
@@ -128,9 +130,9 @@ function npmReadme(contract) {
   const summary = operationSummary(contract);
   return `# moodlia
 
-Command-line client for the MoodlIA Moodle REST API.
+Command-line and Node client for MoodlIA Moodle automation over REST and MCP.
 
-This package contains the public Node CLI, the reusable REST client, generated TypeScript declarations, and the canonical command contract needed by external users. It does not include server-side Moodle plugin files, deployment scripts, tests, or browser automation.
+This package contains the public Node CLI, the reusable REST/MCP client, generated TypeScript declarations, and the canonical command contract needed by external users. It does not include server-side Moodle plugin files, deployment scripts, tests, or browser automation.
 
 The package is intentionally small: install the Moodle plugin on the server first, then use this package from developer machines, CI jobs, or automation workers.
 
@@ -315,6 +317,24 @@ const currentUser = await client.get_current_user();
 const courses = await client.get_courses({ limit: 10 });
 \`\`\`
 
+Use the same canonical methods through the Moodle-hosted MCP endpoint:
+
+\`\`\`js
+import { createMoodleMcpClient } from 'moodlia';
+import contract from 'moodlia/contract' with { type: 'json' };
+
+const client = createMoodleMcpClient({
+  baseUrl: process.env.MOODLE_BASE_URL,
+  token: process.env.MOODLE_REST_TOKEN,
+  contract
+});
+
+const tools = await client.transport.listTools();
+const courses = await client.get_courses({ limit: 10 });
+\`\`\`
+
+The MCP transport lazily negotiates the protocol on its first request. It can also receive an explicit \`endpoint\` instead of \`baseUrl\`.
+
 When JSON module imports are not available, load the contract from a local path:
 
 \`\`\`js
@@ -328,8 +348,8 @@ const contract = loadContractFromFile('./node_modules/moodlia/contract/operation
 The npm package includes only:
 
 - \`cli/moodlia.mjs\`: executable command-line entry point.
-- \`client/moodle-rest-client.mjs\`: reusable REST client.
-- \`client/moodle-rest-client.d.ts\`: TypeScript declarations for the REST client.
+- \`client/moodle-rest-client.mjs\`: reusable REST/MCP client.
+- \`client/moodle-rest-client.d.ts\`: TypeScript declarations for the REST/MCP client.
 - \`client/generated/operation-types.d.ts\`: generated request and response types per operation.
 - \`contract/operations.json\`: publishable command contract.
 - \`README.md\` and \`LICENSE\`.
@@ -351,7 +371,7 @@ This package is generated from the main MoodlIA development repository with:
 npm run npm:sync
 \`\`\`
 
-Do not edit generated files in this package manually. Change the root CLI, REST client, or canonical contract, then sync again.
+Do not edit generated files in this package manually. Change the root CLI, shared client, or canonical contract, then sync again.
 `;
 }
 

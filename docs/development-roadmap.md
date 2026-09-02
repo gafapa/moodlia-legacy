@@ -12,7 +12,7 @@ Implemented:
 - `get_module_details` returns common module metadata plus activity-specific details for Assignment, Book, Choice, Database, Feedback, Lesson, LTI/External tool, Folder, Forum, Glossary, Label, Page, Question bank, Quiz, Resource, Subsection, URL, Wiki, and Workshop using Moodle public APIs, File API helpers, question APIs, and course format APIs.
 - Moodle-hosted MCP endpoint with `tools/list` and `tools/call` over the same REST-backed operation surface.
 - MCP token validation for `tools/list` and `tools/call` using the shared Moodle REST token.
-- `MoodleClient` facade with `RestTransport`, canonical snake_case methods, contract-backed parameter validation, object serialization, and REST error normalization.
+- `MoodleClient` facade with `RestTransport` and `McpTransport`, canonical snake_case methods, contract-backed parameter validation, transport-aware serialization, lazy MCP lifecycle negotiation, and normalized REST/JSON-RPC errors.
 - Node CLI at `cli/moodle-mcp.mjs` that maps contract operations to kebab-case commands and calls Moodle REST directly.
 - Public npm package generator for `moodlia`, containing only the external CLI, REST client, generated types, filtered operation contract, README, and license.
 - Static contract and parity checks.
@@ -30,11 +30,12 @@ Implemented:
 - GitHub Actions CI for local checks that do not require a Moodle target.
 - Selective generated-data cleanup for courses and empty course categories marked with MoodlIA test prefixes.
 - High-level course workflow operations for portable blueprints, blueprint application, structure copy, Book chapter and Feedback item round-tripping, manual enrolment sync, publishing states, and readiness audit.
+- Administrative plugin inventory, detail, dependency, cached update inspection, and guarded enabled-state operations protected by `local/moodlia:manageplugins`, without remote code installation, replacement, or removal.
 
 Still pending:
 
-- Additional subelement write operations where Moodle exposes stable APIs, or where the owning Moodle component has no public writer API and a narrow audited Moodle-DML boundary can mirror core behavior without raw SQL or plugin-owned tables.
-- Additional production hardening as deployment targets require stricter policy checks, such as environment-specific capability matrices or signed release artifacts.
+- Optional third-party subelement extension contracts, only when a deployed Moodle site identifies a concrete plugin type and provides a stable component API.
+- Deployment-specific capability matrices and cryptographic artifact signing, which require the target organisation's role policy and separately managed signing keys. SHA-256 release manifests are implemented.
 
 ## Phase 0: Documentation And Decisions
 
@@ -99,7 +100,7 @@ Verification:
 
 ## Phase 3: TypeScript Client And Node CLI
 
-Status: partially complete. The Node CLI exists and calls REST directly through the shared `MoodleClient` facade. A Moodle-hosted MCP endpoint exists for `tools/list` and `tools/call`. A future MCP transport can be added behind the same client facade if needed.
+Status: complete. The Node CLI calls REST directly through the shared `MoodleClient` facade, while Node consumers can select `RestTransport` or `McpTransport`. The MCP transport negotiates the Moodle-hosted endpoint lifecycle and dispatches the same canonical operations through `tools/call`.
 
 Deliverables:
 
@@ -228,7 +229,7 @@ Verification:
 
 ## Phase 6B: Activity Subelements
 
-Status: implemented where Moodle exposes stable public APIs, with one documented exception for Book chapter writes. Feedback page item reads, analysis reads, finished response reads, item listing, supported item creation/update, captcha creation, pagebreak creation, and item deletion use Moodle Feedback APIs and item class APIs. Database fields and entries including URL field subfields, Choice options/responses/results, Book chapter reads and writes, Lesson content page mutation, Lesson truefalse, shortanswer, multichoice, and numerical question-page mutation, Lesson page/report reads, Workshop submission/report/assessment reads, allocation, assessment form-definition reads, accumulative, comments, number-of-errors, and rubric grading-form setup, assessment updates, assessment evaluation, Forum discussions/posts, Glossary entry reads/browse filters/author filters/pending approval reads, Wiki pages/subwikis/files/view events, Assignment submissions/grades, and controlled Folder/Resource file operations are exposed through Moodle APIs or documented Moodle component boundaries. Book chapter mutation is isolated in `book_chapter_tools` because Moodle Book has no public writer API; it mirrors Moodle Book's own edit/delete/move scripts, uses Moodle DML without raw SQL, validates ownership/capabilities, and triggers Book events. Feedback item types beyond the supported set, advanced Lesson page types beyond truefalse, shortanswer, multichoice, and numerical, and Workshop grading form strategies beyond accumulative, comments, number-of-errors, and rubric remain intentionally unavailable until they can be implemented through stable APIs or an equally narrow audited component boundary. See `docs/subelement-api-boundaries.md` for the acceptance standard and preferred implementation order.
+Status: implemented where Moodle exposes stable public APIs, with one documented exception for Book chapter writes. MoodlIA covers all Moodle 5.0 core Feedback item types, all core Lesson question page types, and all core Workshop grading strategies, alongside the other documented activity subelements. Book chapter mutation is isolated in `book_chapter_tools` because Moodle Book has no public writer API; it mirrors Moodle Book's own edit/delete/move scripts, uses Moodle DML without raw SQL, validates ownership/capabilities, and triggers Book events. Third-party subelement types, Lesson structural cluster/end markers, direct Feedback response mutation, and standalone Workshop assessment creation remain intentionally unavailable until they meet the boundary in `docs/subelement-api-boundaries.md`.
 
 Verification:
 
@@ -238,35 +239,20 @@ Verification:
 
 ## Phase 7: AI Course Generation Workflow
 
-Deliverables:
+Status: implemented as an external AI workflow rather than provider-specific Moodle operations. The downloadable `design-portable-moodle-content` skill produces portable HTML and interactive content, while `operate-moodle-with-moodlia` selects canonical CLI or MCP operations, validates identifiers and payloads, publishes content, and verifies Moodle-visible state.
 
-- AI generation job contract.
-- Course outline generation operation.
-- Section and activity proposal operations.
-- Optional approval workflow in a future external client or Moodle admin page, if it is justified.
-- Final Moodle mutation through existing operation classes.
+Architectural decision:
 
-Candidate operations:
-
-```text
-generate_course_outline
-generate_section_plan
-generate_activity_content
-generate_question_set
-apply_generation_plan
-```
-
-Rules:
-
-- AI generation may propose content, but Moodle mutations must still go through canonical operation classes.
-- Store prompts and outputs only if the privacy design and retention rules allow it.
-- Track generated test data for cleanup.
+- MoodlIA exposes deterministic Moodle capabilities, not AI-provider jobs such as `generate_course_outline` or `generate_activity_content`.
+- AI clients may propose course plans, content, and question sets, then validate and apply them through the existing operation contract, blueprints, CLI, or MCP.
+- Prompts and model outputs remain outside Moodle unless the user explicitly publishes their result, avoiding a new plugin-owned privacy and retention surface.
+- Approval remains an external client concern; Moodle permissions and MoodlIA's guarded write operations remain the final mutation boundary.
 
 Verification:
 
-- Generated plans validate against the operation contract before application.
-- Applied plans create Moodle-visible sections, modules, files, or questions.
-- Privacy tests cover stored generation metadata.
+- Both skills are packaged as downloadable archives and checked for drift.
+- Generated portable content can be published without requiring MoodlIA at course-consumption or backup/restore time.
+- Applied plans still pass contract validation and use Moodle-visible operations with normal capability checks.
 
 ## Phase 8: Deployment Automation
 

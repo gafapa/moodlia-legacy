@@ -78,6 +78,291 @@
       ]
     },
     {
+      "name": "list_plugins",
+      "summary": "Return an administrative inventory of installed, pending, and missing Moodle plugins.",
+      "type": "read",
+      "context": "system",
+      "capabilities": [
+        "local/moodlia:useapi",
+        "local/moodlia:manageplugins"
+      ],
+      "transports": [
+        "rest",
+        "cli"
+      ],
+      "files": "none",
+      "parameters": {
+        "plugin_type": {
+          "type": "string",
+          "required": false
+        },
+        "source": {
+          "type": "string",
+          "required": false,
+          "enum": [
+            "all",
+            "standard",
+            "additional",
+            "missing"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "enum": [
+            "all",
+            "nodb",
+            "uptodate",
+            "new",
+            "upgrade",
+            "delete",
+            "downgrade",
+            "missing"
+          ]
+        }
+      },
+      "returns": {
+        "total": "integer",
+        "plugins": [
+          {
+            "component": "string",
+            "plugin_type": "string",
+            "name": "string",
+            "display_name": "string",
+            "source": "string",
+            "status": "string",
+            "version_disk": "string",
+            "version_db": "string",
+            "release": "string",
+            "enabled_known": "boolean",
+            "enabled": "boolean",
+            "can_change_enabled": "boolean",
+            "update_count": "integer"
+          }
+        ]
+      },
+      "errors": [
+        "invalid_parameters",
+        "invalid_context",
+        "missing_capability",
+        "transport_error",
+        "moodle_error",
+        "internal_error"
+      ],
+      "tests": [
+        "parity",
+        "api",
+        "cli"
+      ]
+    },
+    {
+      "name": "get_plugin_details",
+      "summary": "Return administrative metadata for one installed, pending, or missing Moodle plugin.",
+      "type": "read",
+      "context": "system",
+      "capabilities": [
+        "local/moodlia:useapi",
+        "local/moodlia:manageplugins"
+      ],
+      "transports": [
+        "rest",
+        "cli"
+      ],
+      "files": "none",
+      "parameters": {
+        "component": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "returns": {
+        "component": "string",
+        "plugin_type": "string",
+        "name": "string",
+        "display_name": "string",
+        "source": "string",
+        "status": "string",
+        "version_disk": "string",
+        "version_db": "string",
+        "release": "string",
+        "enabled_known": "boolean",
+        "enabled": "boolean",
+        "can_change_enabled": "boolean",
+        "dependency_count": "integer",
+        "required_by_count": "integer",
+        "update_count": "integer"
+      },
+      "errors": [
+        "invalid_parameters",
+        "invalid_context",
+        "missing_capability",
+        "not_found",
+        "transport_error",
+        "moodle_error",
+        "internal_error"
+      ],
+      "tests": [
+        "parity",
+        "api",
+        "cli"
+      ]
+    },
+    {
+      "name": "get_plugin_dependencies",
+      "summary": "Return resolved dependencies and reverse dependencies for one Moodle plugin.",
+      "type": "read",
+      "context": "system",
+      "capabilities": [
+        "local/moodlia:useapi",
+        "local/moodlia:manageplugins"
+      ],
+      "transports": [
+        "rest",
+        "cli"
+      ],
+      "files": "none",
+      "parameters": {
+        "component": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "returns": {
+        "component": "string",
+        "satisfied": "boolean",
+        "dependencies": [
+          {
+            "component": "string",
+            "installed_version": "string",
+            "required_version": "string",
+            "status": "string",
+            "availability": "string"
+          }
+        ],
+        "required_by": [
+          "string"
+        ]
+      },
+      "errors": [
+        "invalid_parameters",
+        "invalid_context",
+        "missing_capability",
+        "not_found",
+        "transport_error",
+        "moodle_error",
+        "internal_error"
+      ],
+      "tests": [
+        "parity",
+        "api",
+        "cli"
+      ]
+    },
+    {
+      "name": "check_plugin_updates",
+      "summary": "Return cached Moodle plugin updates and optionally refresh update information from Moodle.org.",
+      "type": "read",
+      "context": "system",
+      "capabilities": [
+        "local/moodlia:useapi",
+        "local/moodlia:manageplugins"
+      ],
+      "transports": [
+        "rest",
+        "cli"
+      ],
+      "files": "none",
+      "parameters": {
+        "component": {
+          "type": "string",
+          "required": false
+        },
+        "refresh": {
+          "type": "boolean",
+          "required": false
+        }
+      },
+      "returns": {
+        "refreshed": "boolean",
+        "last_checked": "integer",
+        "total": "integer",
+        "updates": [
+          {
+            "component": "string",
+            "current_version": "string",
+            "available_version": "string",
+            "release": "string",
+            "maturity": "integer",
+            "information_url": "string",
+            "download_url": "string"
+          }
+        ]
+      },
+      "errors": [
+        "invalid_parameters",
+        "invalid_context",
+        "missing_capability",
+        "not_found",
+        "transport_error",
+        "moodle_error",
+        "internal_error"
+      ],
+      "tests": [
+        "parity",
+        "api",
+        "cli"
+      ]
+    },
+    {
+      "name": "set_plugin_enabled",
+      "summary": "Enable or disable one compatible Moodle plugin without installing or removing code.",
+      "type": "write",
+      "context": "system",
+      "capabilities": [
+        "local/moodlia:useapi",
+        "local/moodlia:manageplugins"
+      ],
+      "transports": [
+        "rest",
+        "cli"
+      ],
+      "files": "none",
+      "parameters": {
+        "component": {
+          "type": "string",
+          "required": true
+        },
+        "enabled": {
+          "type": "boolean",
+          "required": true
+        }
+      },
+      "returns": {
+        "component": "string",
+        "previous_enabled": "boolean",
+        "enabled": "boolean",
+        "changed": "boolean"
+      },
+      "errors": [
+        "invalid_parameters",
+        "invalid_context",
+        "missing_capability",
+        "not_found",
+        "unsupported_operation",
+        "protected_plugin",
+        "dependency_conflict",
+        "state_verification_failed",
+        "transport_error",
+        "moodle_error",
+        "internal_error"
+      ],
+      "tests": [
+        "parity",
+        "api",
+        "cli"
+      ]
+    },
+    {
       "name": "get_courses",
       "summary": "Return Moodle courses visible to the authenticated user.",
       "type": "read",
@@ -5443,6 +5728,8 @@
           "required": false,
           "enum": [
             "content",
+            "essay",
+            "matching",
             "multichoice",
             "numerical",
             "shortanswer",

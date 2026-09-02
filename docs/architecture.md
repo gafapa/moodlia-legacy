@@ -91,6 +91,10 @@ responsibilities separated:
   mirrors the owning component's own edit/delete/move behavior, validates Book
   ownership and `mod/book:edit`, updates revision and page order, triggers Book
   events, and must not use raw SQL or plugin-owned tables.
+- `plugin_management_tools` owns the system plugin inventory boundary through
+  `core_plugin_manager`, dependency resolution, cached update metadata, and guarded
+  enabled-state support. It never writes plugin files, installs packages, runs an
+  upgrade, uninstalls code, or allows MoodlIA to change its own enabled state.
 - Additional helpers should follow the same rule: group behavior by Moodle API boundary,
   not by transport.
 
@@ -139,7 +143,7 @@ The MCP adapter should not define independent schemas by hand. The current PHP m
 
 ### TypeScript Client Layer
 
-The shared client layer provides a `MoodleClient` facade over a REST transport today and can add an MCP transport without changing operation semantics:
+The shared client layer provides a `MoodleClient` facade over interchangeable REST and MCP transports without changing canonical operation semantics:
 
 ```text
 MoodleClient
@@ -155,7 +159,9 @@ create_module() -> create_module
 update_question() -> update_question
 ```
 
-The current client is implemented in `client/moodle-rest-client.mjs`. It validates and coerces parameters against `contract/operations.json`, maps canonical operations to `local_moodlia_*` REST functions, normalizes Moodle REST payload errors, and accepts JavaScript objects for contract `object` parameters before serializing them for REST.
+The current client is implemented in `client/moodle-rest-client.mjs`. It validates and coerces parameters against `contract/operations.json`, maps canonical operations to `local_moodlia_*` REST functions or MCP `tools/call`, and normalizes REST and JSON-RPC errors. Object and boolean parameters use form-compatible encoding for REST and native JSON encoding for MCP.
+
+`McpTransport` derives `/local/moodlia/mcp.php` from the Moodle base URL or accepts an explicit endpoint. It performs lazy `initialize` negotiation, sends `notifications/initialized`, reuses the negotiated protocol version, and exposes `ping`, `listTools`, and canonical operation calls. The adapter remains stateless at the HTTP layer and authenticates every request with the Moodle bearer token.
 
 ### Node CLI
 
@@ -187,7 +193,7 @@ The CLI should:
 - Print JSON by default for automation.
 - Offer concise table output only as an optional presentation mode.
 
-This keeps the CLI faster and simpler for automation than routing through MCP. A future TypeScript client can still wrap the same REST transport without changing command names or operation semantics.
+This keeps the CLI faster and simpler for automation than routing through MCP. The shared Node client can select REST or MCP without changing canonical operation names or response validation.
 
 ### Public Npm Package
 

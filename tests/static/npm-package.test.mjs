@@ -21,7 +21,7 @@ async function listFiles(directory, root = directory) {
   return files.sort();
 }
 
-test('npm CLI package contains only the publishable REST client surface', async () => {
+test('npm package contains only the publishable CLI and REST/MCP client surface', async () => {
   const packageDirectory = fromRoot('packages/moodlia');
   const packageJson = JSON.parse(await fs.readFile(path.join(packageDirectory, 'package.json'), 'utf8'));
   const contract = JSON.parse(await fs.readFile(path.join(packageDirectory, 'contract/operations.json'), 'utf8'));
@@ -49,6 +49,11 @@ test('npm CLI package contains only the publishable REST client surface', async 
   }
 
   const packageText = await Promise.all(files.map((file) => fs.readFile(path.join(packageDirectory, file), 'utf8')));
-  assert.ok(!packageText.join('\n').match(/\bmcp\b/i), 'publishable package must not include MCP references');
-  assert.ok(!packageText.join('\n').match(/winscp|playwright|test-results|\.env\.test/i), 'publishable package must not include development tooling references');
+  const combinedText = packageText.join('\n');
+  assert.match(combinedText, /createMoodleMcpClient/, 'publishable package must expose the MCP client factory');
+  assert.match(combinedText, /class McpTransport/, 'publishable package must expose the MCP transport');
+  assert.ok(
+    !combinedText.match(/winscp|playwright|test-results|\.env\.test/i),
+    'publishable package must not include development tooling references'
+  );
 });

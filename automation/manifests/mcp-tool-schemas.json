@@ -1,5 +1,23 @@
 {
   "tools": {
+    "list_plugins": {
+      "source": [
+        "all",
+        "standard",
+        "additional",
+        "missing"
+      ],
+      "status": [
+        "all",
+        "nodb",
+        "uptodate",
+        "new",
+        "upgrade",
+        "delete",
+        "downgrade",
+        "missing"
+      ]
+    },
     "assign_course_role": {
       "role_archetype": [
         "student",
@@ -87,6 +105,8 @@
     "create_lesson_page": {
       "page_type": [
         "content",
+        "essay",
+        "matching",
         "multichoice",
         "numerical",
         "shortanswer",

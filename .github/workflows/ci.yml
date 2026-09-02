@@ -44,6 +44,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
+      - name: Build generated website and release artifacts
+        run: npm run release:artifacts
+
       - name: Check generated npm package mirror
         run: npm run npm:sync:check
 
@@ -55,9 +61,6 @@ jobs:
 
       - name: Run release preflight
         run: npm run release:check
-
-      - name: Install Playwright browser
-        run: npx playwright install chromium
 
       - name: Run project website tests
         run: npm run test:site

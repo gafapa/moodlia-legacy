@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="MoodlIA lets AI assistants create, manage, and verify real Moodle courses through one secure connection.">
+    <meta name="theme-color" content="#07464a">
+    <title>MoodlIA — Control Moodle with AI</title>
+    <link rel="icon" href="./assets/moodlia-icon.svg" type="image/svg+xml">
+    <link rel="icon" href="./icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="./site.webmanifest">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body class="project-overview">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="signal-bar" aria-label="How MoodlIA works">
+      <span>You ask</span>
+      <span>Your AI understands</span>
+      <span>MoodlIA acts in Moodle</span>
+      <span>You stay in control</span>
+    </div>
+
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="MoodlIA home">
+        <span class="brand-mark" aria-hidden="true"><img src="./assets/moodlia-icon.svg" alt=""></span>
+        <span><strong>MoodlIA</strong><small>AI control for Moodle</small></span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+        <span aria-hidden="true"></span><span class="sr-only">Open navigation</span>
+      </button>
+
+      <nav class="site-nav" id="primary-navigation" aria-label="Primary navigation">
+        <a href="#capabilities">Capabilities</a>
+        <a href="#install">Install</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#features">Features</a>
+        <a href="#skills">Skills</a>
+      </nav>
+
+      <a class="search-jump" href="https://github.com/gafapa/moodlia" target="_blank" rel="noreferrer" aria-label="View on GitHub">
+        <span aria-hidden="true">GH</span><span class="search-jump-label">View on GitHub</span><span aria-hidden="true">↗</span>
+      </a>
+    </header>
+
+    <main id="main-content">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="hero-copy reveal">
+          <p class="kicker"><span>AI control for Moodle</span> One simple connection</p>
+          <h1 id="hero-title">Control Moodle with AI.</h1>
+          <p class="hero-lede">Ask your AI to create courses, add learning content, manage people, prepare assessments, or check progress. MoodlIA turns that request into real, controlled actions inside Moodle.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#capabilities">Discover MoodlIA</a>
+            <a class="button button-quiet" href="#install">Install the system</a>
+          </div>
+          <ol class="hero-simple-flow" aria-label="MoodlIA in three steps">
+            <li><span>1</span><strong>Ask</strong><small>Describe the result.</small></li>
+            <li><span>2</span><strong>MoodlIA acts</strong><small>Inside Moodle.</small></li>
+            <li><span>3</span><strong>Review</strong><small>Keep full control.</small></li>
+          </ol>
+        </div>
+
+        <div class="hero-instrument reveal" aria-label="Example AI request completed in Moodle">
+          <div class="instrument-topline"><span>AI REQUEST</span><span class="instrument-status"><i aria-hidden="true"></i> MOODLE CONNECTED</span></div>
+          <div class="conversation-window">
+            <div class="conversation-request"><span>You ask</span><p>“Create a four-week introduction to AI, add a short quiz, and keep it hidden until I review it.”</p></div>
+            <div class="conversation-response">
+              <span>MoodlIA works in Moodle</span>
+              <ul>
+                <li><i aria-hidden="true">✓</i><span><strong>Course created</strong><small>Hidden and ready for review</small></span></li>
+                <li><i aria-hidden="true">✓</i><span><strong>Content organised</strong><small>Four weekly sections</small></span></li>
+                <li><i aria-hidden="true">✓</i><span><strong>Quiz prepared</strong><small>Questions and grading included</small></span></li>
+                <li class="conversation-pending"><i aria-hidden="true">→</i><span><strong>Waiting for you</strong><small>Nothing published without review</small></span></li>
+              </ul>
+            </div>
+          </div>
+          <p class="instrument-note">Your AI asks. MoodlIA acts. Moodle permissions still apply.</p>
+        </div>
+      </section>
+
+      <nav class="ecosystem-dock" aria-label="MoodlIA ecosystem links">
+        <a href="https://github.com/gafapa/moodlia" target="_blank" rel="noreferrer"><span class="ecosystem-icon" aria-hidden="true">GH</span><span><small>Source and documentation</small><strong>GitHub repository</strong><em>Explore the project ↗</em></span></a>
+        <a href="https://moodle.org/plugins/local_moodlia" target="_blank" rel="noreferrer"><span class="ecosystem-icon" aria-hidden="true">MO</span><span><small>Official Moodle listing</small><strong>Moodle plugin directory</strong><em>View local_moodlia ↗</em></span></a>
+        <a href="https://www.npmjs.com/package/moodlia" target="_blank" rel="noreferrer"><span class="ecosystem-icon" aria-hidden="true">npm</span><span><small>Command line and Node client</small><strong>moodlia on npm</strong><em>Open the package ↗</em></span></a>
+      </nav>
+
+      <section class="manual-section overview-capabilities" id="capabilities" aria-labelledby="capabilities-title">
+        <header class="section-heading reveal">
+          <p class="section-index">01 / CAPABILITIES</p>
+          <h2 id="capabilities-title">What can your AI do in Moodle?</h2>
+          <p>From a first course draft to daily administration, MoodlIA gives an AI assistant a broad but permission-controlled set of Moodle capabilities.</p>
+        </header>
+
+        <div class="capability-grid">
+          <article class="capability-card reveal"><span aria-hidden="true">01</span><h3>Build courses</h3><p>Create categories, courses, sections, activities, Books, Pages, and complete learning structures.</p><small>“Create a six-week onboarding course.”</small></article>
+          <article class="capability-card reveal"><span aria-hidden="true">02</span><h3>Create content</h3><p>Write polished learning material, organise chapters, attach files, and add portable interactive demonstrations.</p><small>“Turn this document into an interactive Book.”</small></article>
+          <article class="capability-card reveal"><span aria-hidden="true">03</span><h3>Manage people</h3><p>Create users, enrol learners, assign roles, and organise groups, cohorts, and groupings.</p><small>“Enrol the sales team in the new course.”</small></article>
+          <article class="capability-card reveal"><span aria-hidden="true">04</span><h3>Assess learning</h3><p>Prepare assignments, question banks, quizzes, rubrics, grades, feedback, and completion rules.</p><small>“Build a ten-question knowledge check.”</small></article>
+          <article class="capability-card reveal"><span aria-hidden="true">05</span><h3>Monitor progress</h3><p>Inspect participation, grades, completion, course readiness, and learner progress.</p><small>“Who needs help before Friday?”</small></article>
+          <article class="capability-card reveal"><span aria-hidden="true">06</span><h3>Protect your work</h3><p>Review changes, audit configuration, create native Moodle backups, and restore courses when needed.</p><small>“Check the course and create a backup.”</small></article>
+        </div>
+      </section>
+
+      <section class="manual-section install-overview" id="install" aria-labelledby="install-title">
+        <header class="section-heading reveal">
+          <p class="section-index">02 / INSTALL</p>
+          <h2 id="install-title">Install only the parts you need.</h2>
+          <p>The Moodle plugin is the essential bridge. The CLI, Node client, and authoring skills are optional ways to use or extend it.</p>
+        </header>
+
+        <div class="install-part-grid">
+          <article class="install-part install-required reveal"><div><span>Required</span><strong>1</strong></div><h3>Moodle plugin</h3><p>Install <code>local_moodlia</code> in Moodle, enable its web service, and create a token for a dedicated user.</p><a href="https://github.com/gafapa/moodlia" target="_blank" rel="noreferrer">Get the plugin ↗</a></article>
+          <article class="install-part reveal"><div><span>Connect</span><strong>2</strong></div><h3>Your AI assistant</h3><p>Give your AI client the MoodlIA endpoint and token. It can then discover the available Moodle actions.</p><a href="https://github.com/gafapa/moodlia/blob/main/docs/install-release-guide.md" target="_blank" rel="noreferrer">Connection guide ↗</a></article>
+          <article class="install-part reveal"><div><span>Optional</span><strong>3</strong></div><h3>CLI and Node client</h3><p>Install the public package when you also want terminal commands, scripts, CI, or a Node application.</p><pre data-copy><code>npm install -g moodlia</code></pre></article>
+          <article class="install-part reveal"><div><span>Optional</span><strong>4</strong></div><h3>Authoring skills</h3><p>Add the two downloadable skills when you want an AI to design rich Moodle content and operate MoodlIA safely.</p><a href="#skills">View the skills</a></article>
+        </div>
+        <p class="install-note reveal"><strong>In everyday use:</strong> once connected, you work by asking your AI—not by memorising commands.</p>
+      </section>
+
+      <section class="manual-section architecture-overview" id="architecture" aria-labelledby="architecture-title">
+        <header class="section-heading section-heading-light reveal">
+          <p class="section-index">03 / ARCHITECTURE</p>
+          <h2 id="architecture-title">One bridge between AI and Moodle.</h2>
+          <p>MoodlIA does not replace Moodle or keep a second copy of your courses. It translates authorised requests into standard Moodle actions.</p>
+        </header>
+
+        <div class="architecture-map reveal" aria-label="MoodlIA architecture">
+          <div class="architecture-sources"><span>AI assistant</span><span>Command line</span><span>Node application</span></div>
+          <i aria-hidden="true">→</i>
+          <div class="architecture-bridge"><img src="./assets/moodlia-icon.svg" alt=""><span>MoodlIA</span><small>Permission checks · validation · consistent actions</small></div>
+          <i aria-hidden="true">→</i>
+          <div class="architecture-target"><strong>Moodle</strong><span>Courses · people · content · assessment · reports</span></div>
+        </div>
+        <div class="architecture-principles reveal"><span><strong>Moodle stays authoritative</strong>No parallel database.</span><span><strong>Permissions still apply</strong>The token only does what its user can do.</span><span><strong>Courses stay portable</strong>Native backups restore without MoodlIA.</span></div>
+      </section>
+
+      <section class="manual-section feature-overview" id="features" aria-labelledby="features-title">
+        <header class="section-heading reveal">
+          <p class="section-index">04 / FUNCTIONALITY</p>
+          <h2 id="features-title">A few things MoodlIA can handle.</h2>
+          <p>The project currently exposes 240 Moodle operations. These examples show the range without turning this page into an API reference.</p>
+        </header>
+
+        <div class="feature-bento">
+          <article class="feature-tile feature-course reveal"><span>COURSE CREATION</span><h3>From a brief to a complete course</h3><p>Draft the structure, create activities, add content, configure completion, review, and publish.</p><div aria-hidden="true"><i>Brief</i><b>→</b><i>Course</i><b>→</b><i>Review</i></div></article>
+          <article class="feature-tile feature-content reveal"><span>RICH CONTENT</span><h3>Books learners want to explore</h3><p>Visually polished chapters, local media, diagrams, and self-contained interactive demonstrations that remain portable.</p></article>
+          <article class="feature-tile feature-assessment reveal"><span>ASSESSMENT</span><h3>Quizzes, questions, grades, and feedback</h3><p>Build question banks, configure quizzes, grade work, and inspect results.</p></article>
+          <article class="feature-tile feature-people reveal"><span>PEOPLE</span><h3>Users, enrolments, roles, and groups</h3><p>Manage access and organise learners without repetitive administration.</p></article>
+          <article class="feature-tile feature-control reveal"><span>CONTROL</span><h3>Read first. Change once. Verify.</h3><p>Inspect content, settings, plugin versions, dependencies, and updates before applying a focused, permission-checked change.</p></article>
+        </div>
+      </section>
+
+      <section class="manual-section compact-skills" id="skills" aria-labelledby="skills-title">
+        <header class="section-heading reveal">
+          <p class="section-index">05 / OPTIONAL SKILLS</p>
+          <h2 id="skills-title">Two skills extend the authoring experience.</h2>
+          <p>They help the AI design better Moodle learning material and use MoodlIA consistently. Courses do not depend on the skills after publication.</p>
+        </header>
+
+        <div class="compact-skill-grid">
+          <article class="compact-skill reveal"><span>DESIGN</span><h3>Portable Moodle content</h3><p>Create accessible, attractive HTML and interactive demonstrations for Books, Pages, Lessons, descriptions, and other Moodle content areas.</p><ul><li>Visual content patterns</li><li>Interactive component template</li><li>Portability and accessibility checks</li></ul><div><a class="button button-primary" href="./downloads/design-portable-moodle-content.zip" download>Download skill</a><a href="https://github.com/gafapa/moodlia/blob/main/skills/design-portable-moodle-content/SKILL.md" target="_blank" rel="noreferrer">Read more ↗</a></div></article>
+          <article class="compact-skill compact-skill-operate reveal"><span>OPERATE</span><h3>Moodle with MoodlIA</h3><p>Help an AI choose the right MoodlIA action, publish safely, verify the result, and protect the course with a Moodle backup.</p><ul><li>Publishing workflows</li><li>Safety and verification rules</li><li>MCP and CLI guidance</li></ul><div><a class="button button-primary" href="./downloads/operate-moodle-with-moodlia.zip" download>Download skill</a><a href="https://github.com/gafapa/moodlia/blob/main/skills/operate-moodle-with-moodlia/SKILL.md" target="_blank" rel="noreferrer">Read more ↗</a></div></article>
+        </div>
+      </section>
+
+      <section class="manual-section final-cta" aria-labelledby="final-title">
+        <div class="reveal"><p class="section-index">READY TO START?</p><h2 id="final-title">Connect your AI to Moodle.</h2><p>Install the plugin, create a restricted token, and ask for your first course.</p><div><a class="button button-primary" href="https://github.com/gafapa/moodlia" target="_blank" rel="noreferrer">Open the repository</a><a class="button button-quiet" href="https://github.com/gafapa/moodlia/blob/main/docs/install-release-guide.md" target="_blank" rel="noreferrer">Read the installation guide ↗</a></div></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-brand"><span class="brand-mark" aria-hidden="true"><img src="./assets/moodlia-icon.svg" alt=""></span><strong>MoodlIA</strong></div>
+      <p>Control Moodle with AI while Moodle remains in control.</p>
+      <nav aria-label="Footer navigation"><a href="#capabilities">Capabilities</a><a href="#install">Install</a><a href="https://github.com/gafapa/moodlia" target="_blank" rel="noreferrer">GitHub</a><a href="https://www.npmjs.com/package/moodlia" target="_blank" rel="noreferrer">npm</a><a href="https://moodle.org/plugins/local_moodlia" target="_blank" rel="noreferrer">Moodle plugin</a></nav>
+    </footer>
+
+    <div class="copy-status" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

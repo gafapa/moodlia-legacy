@@ -22,7 +22,14 @@ test('dependency lockfile uses the official npm registry with integrity hashes',
 
 test('CI pins third-party actions and requires Node 24, PHP lint, and dependency audit', async () => {
   const workflow = await fs.readFile(fromRoot('.github/workflows/ci.yml'), 'utf8');
-  const actionReferences = [...workflow.matchAll(/^\s*uses:\s*([^\s#]+)/gm)].map((match) => match[1]);
+  const moodleWorkflow = await fs.readFile(fromRoot('.github/workflows/moodle-plugin-ci.yml'), 'utf8');
+  const packageJson = JSON.parse(await fs.readFile(fromRoot('package.json'), 'utf8'));
+  const gitignore = await fs.readFile(fromRoot('.gitignore'), 'utf8');
+  const iconGenerator = await fs.readFile(fromRoot('tools/generate-app-icons.mjs'), 'utf8');
+  const skillPackager = await fs.readFile(fromRoot('tools/package-site-skills.mjs'), 'utf8');
+  const zipWriter = await fs.readFile(fromRoot('tools/lib/reproducible-zip.mjs'), 'utf8');
+  const actionReferences = [...`${workflow}\n${moodleWorkflow}`.matchAll(/^\s*uses:\s*([^\s#]+)/gm)]
+    .map((match) => match[1]);
 
   assert.ok(actionReferences.length >= 4);
   for (const reference of actionReferences) {
@@ -33,6 +40,40 @@ test('CI pins third-party actions and requires Node 24, PHP lint, and dependency
   assert.match(workflow, /php-version:\s*'8\.2'/);
   assert.match(workflow, /npm run lint:php -- --required/);
   assert.match(workflow, /npm audit --audit-level=high/);
+  assert.match(workflow, /npm run release:artifacts/);
+  assert.ok(
+    workflow.indexOf('npm run release:artifacts') < workflow.indexOf('npm run test:site'),
+    'generated site artifacts must be prepared before website tests'
+  );
+  assert.equal(
+    packageJson.scripts['release:artifacts'],
+    'npm run site:prepare && npm run plugin:boilerplate:check && npm run plugin:marketplace:check && ' +
+      'npm run plugin:archive && npm run release:checksums'
+  );
+  assert.match(moodleWorkflow, /MOODLE_BRANCH:\s*MOODLE_502_STABLE/);
+  assert.match(moodleWorkflow, /php-version:\s*'8\.3'/);
+  assert.match(moodleWorkflow, /database:\s*\r?\n\s+- pgsql\s*\r?\n\s+- mariadb/);
+  assert.match(moodleWorkflow, /moodle-plugin-ci phpcs --max-warnings 0/);
+  assert.match(moodleWorkflow, /moodle-plugin-ci phpdoc --max-warnings 0/);
+  assert.match(moodleWorkflow, /moodle-plugin-ci validate/);
+  assert.match(moodleWorkflow, /moodle-plugin-ci phpunit --fail-on-warning/);
+  for (const ignoredOutput of [
+    '/dist/operations.generated.js',
+    '/dist/icons/',
+    '/dist/downloads/',
+    '/site/',
+    '/empaquetado/'
+  ]) {
+    assert.ok(gitignore.includes(ignoredOutput), `${ignoredOutput} must have an explicit artifact policy`);
+  }
+  assert.match(iconGenerator, /Application icon source not found/);
+  assert.match(skillPackager, /createZipFromDirectory/);
+  assert.doesNotMatch(skillPackager, /dosDate|crcTable|2026/);
+  assert.match(zipWriter, /from 'fflate'/);
+  assert.match(zipWriter, /zipSync/);
+  assert.doesNotMatch(zipWriter, /crcTable|writeUInt\d+LE|0x04034b50/);
+  assert.match(zipWriter, /SOURCE_DATE_EPOCH/);
+  assert.match(zipWriter, /Date\.UTC\(1980,\s*0,\s*1/);
 });
 
 test('MCP endpoint implements lifecycle, origin validation, bounded input, and CallToolResult', async () => {

@@ -1,16 +1,24 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * Create Lesson page operation.
  *
  * @package    local_moodlia
- * @copyright  2026
+ * @copyright  2026 Pablo Gallego
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -131,7 +139,7 @@ class create_lesson_page {
                 lesson_tools::decode_multichoice_answers($answersjson),
                 $afterpageid
             );
-        } else {
+        } elseif ($pagetype === 'numerical') {
             if ($branchesjson !== null && trim($branchesjson) !== '') {
                 throw new \invalid_parameter_exception('branches is only supported for content Lesson pages.');
             }
@@ -145,6 +153,38 @@ class create_lesson_page {
                 $content,
                 $contentformat,
                 lesson_tools::decode_numerical_answers($answersjson),
+                $afterpageid
+            );
+        } elseif ($pagetype === 'essay') {
+            if ($branchesjson !== null && trim($branchesjson) !== '') {
+                throw new \invalid_parameter_exception('branches is only supported for content Lesson pages.');
+            }
+            if ($answersjson === null || trim($answersjson) === '') {
+                throw new \invalid_parameter_exception('answers is required for essay Lesson pages.');
+            }
+
+            $properties = lesson_tools::essay_page_properties(
+                $lesson,
+                $title,
+                $content,
+                $contentformat,
+                lesson_tools::decode_essay_answers($answersjson),
+                $afterpageid
+            );
+        } else {
+            if ($branchesjson !== null && trim($branchesjson) !== '') {
+                throw new \invalid_parameter_exception('branches is only supported for content Lesson pages.');
+            }
+            if ($answersjson === null || trim($answersjson) === '') {
+                throw new \invalid_parameter_exception('answers is required for matching Lesson pages.');
+            }
+
+            $properties = lesson_tools::matching_page_properties(
+                $lesson,
+                $title,
+                $content,
+                $contentformat,
+                lesson_tools::decode_matching_answers($answersjson),
                 $afterpageid
             );
         }

@@ -84,6 +84,37 @@ npm test
 
 The smoke command limits Node test-file concurrency to four workers so a remote Moodle target is not overwhelmed by connection bursts and independent data workflows remain isolated enough for reliable cleanup.
 
+## Release Artifact Checksums
+
+The website shell in `dist/` is versioned source. Its operation index, rendered PNG
+icons, and downloadable skill archives are derived files ignored by Git. The
+`empaquetado/` directory is also ignored and contains only local release outputs.
+Generate the complete derived set before running website or release checks:
+
+```text
+npm run release:artifacts
+```
+
+This command rebuilds the website derivatives, creates the plugin archive for the
+release declared in `plugin/moodlia/version.php`, removes obsolete plugin archives,
+and writes the SHA-256 manifest. ZIP creation uses a maintained library and stable
+timestamps. Set `SOURCE_DATE_EPOCH` when a release pipeline needs a specific
+reproducible timestamp; otherwise the ZIP epoch defaults to 1980-01-01 UTC.
+
+To regenerate only the SHA-256 manifest after the artifacts already exist:
+
+```text
+npm run release:checksums
+```
+
+The manifest is written to `empaquetado/SHA256SUMS.txt`. Release checks verify it with:
+
+```text
+npm run release:checksums:check
+```
+
+Checksums detect accidental or unauthorised artifact changes. They do not replace cryptographic signing; signing requires a separately managed release key and CI secret policy.
+
 Smoke tests are skipped automatically when their required environment variables are not set:
 
 | Test Group | Required Variables |
@@ -177,6 +208,8 @@ The default GitHub Actions workflow is `.github/workflows/ci.yml`. It is intenti
 
 ```text
 npm ci
+npx playwright install chromium
+npm run release:artifacts
 npm run npm:sync:check
 npm run release:check
 npm run test:site
@@ -185,6 +218,12 @@ npm run test:site
 The CI job runs on Windows because the local release packaging defaults and development workflow are Windows-friendly. It overrides `LOCAL_PLUGIN_PACKAGE_PATH` to a runner temp directory, then validates all JavaScript syntax, all plugin PHP syntax on PHP 8.2, generated manifests, generated TypeScript operation types, static tests, dependency audit, plugin packaging, and project website tests.
 
 Remote Moodle smoke tests and browser verification are not in the default CI workflow. They require environment-specific secrets, a reachable Moodle instance, and permission to create generated test data.
+
+The separate `.github/workflows/moodle-plugin-ci.yml` workflow installs Moodle
+5.2 and validates the packaged plugin on PHP 8.3 with both PostgreSQL and
+MariaDB. It runs PHP lint, Moodle Code Checker, Moodle PHPDoc Checker, structural
+validation, upgrade savepoint checks, and the plugin PHPUnit suite. This workflow
+is the Marketplace compatibility gate and must pass before uploading a release.
 
 ## Deployment Safeguards
 

@@ -6,8 +6,11 @@ import { fromRoot } from '../helpers/paths.mjs';
 const pluginRoot = fromRoot('plugin/moodlia');
 
 const requiredFiles = [
+  'LICENSE',
+  'README.md',
   'version.php',
   'mcp.php',
+  'pix/icon.svg',
   'db/access.php',
   'db/services.php',
   'lang/en/local_moodlia.php',
@@ -874,7 +877,7 @@ test('question bank blueprint import and export stay portable and API-backed', a
   assert.match(importExternal, /require_capability\('moodle\/question:add'/);
 });
 
-test('lesson content and truefalse page lifecycle uses Moodle Lesson component APIs', async () => {
+test('lesson content and core question page lifecycle uses Moodle Lesson component APIs', async () => {
   const contract = JSON.parse(await fs.readFile(fromRoot('contract/operations.json'), 'utf8'));
   const byName = new Map(contract.operations.map((operation) => [operation.name, operation]));
   const services = await fs.readFile(fromRoot('plugin/moodlia/db/services.php'), 'utf8');
@@ -882,6 +885,7 @@ test('lesson content and truefalse page lifecycle uses Moodle Lesson component A
   const createOperation = await fs.readFile(fromRoot('plugin/moodlia/classes/operation/create_lesson_page.php'), 'utf8');
   const updateOperation = await fs.readFile(fromRoot('plugin/moodlia/classes/operation/update_lesson_page.php'), 'utf8');
   const deleteOperation = await fs.readFile(fromRoot('plugin/moodlia/classes/operation/delete_lesson_page.php'), 'utf8');
+  const lessonSmoke = await fs.readFile(fromRoot('tests/smoke/lesson-module.test.mjs'), 'utf8');
 
   for (const operationName of ['create_lesson_page', 'update_lesson_page', 'delete_lesson_page']) {
     assert.ok(byName.has(operationName), `${operationName} must exist in the operation contract.`);
@@ -897,6 +901,8 @@ test('lesson content and truefalse page lifecycle uses Moodle Lesson component A
   assert.equal(byName.get('create_lesson_page')?.parameters.branches.required, false);
   assert.deepEqual(byName.get('create_lesson_page')?.parameters.page_type.enum, [
     'content',
+    'essay',
+    'matching',
     'multichoice',
     'numerical',
     'shortanswer',
@@ -911,17 +917,27 @@ test('lesson content and truefalse page lifecycle uses Moodle Lesson component A
   assert.match(lessonTools, /MULTICHOICE_PAGE_TYPE\s*=\s*3/);
   assert.match(lessonTools, /SHORTANSWER_PAGE_TYPE\s*=\s*1/);
   assert.match(lessonTools, /NUMERICAL_PAGE_TYPE\s*=\s*8/);
+  assert.match(lessonTools, /ESSAY_PAGE_TYPE\s*=\s*10/);
+  assert.match(lessonTools, /MATCHING_PAGE_TYPE\s*=\s*5/);
   assert.match(lessonTools, /function decode_branches/);
   assert.match(lessonTools, /function decode_truefalse_answers/);
   assert.match(lessonTools, /function decode_shortanswer_answers/);
   assert.match(lessonTools, /function decode_multichoice_answers/);
   assert.match(lessonTools, /function decode_numerical_answers/);
+  assert.match(lessonTools, /function decode_essay_answers/);
+  assert.match(lessonTools, /function decode_matching_answers/);
   assert.match(lessonTools, /function truefalse_page_properties/);
   assert.match(lessonTools, /function shortanswer_page_properties/);
   assert.match(lessonTools, /function multichoice_page_properties/);
   assert.match(lessonTools, /function numerical_page_properties/);
+  assert.match(lessonTools, /function essay_page_properties/);
+  assert.match(lessonTools, /function matching_page_properties/);
   assert.match(lessonTools, /function multichoice_answers_from_page/);
   assert.match(lessonTools, /function numerical_answers_from_page/);
+  assert.match(lessonTools, /function essay_answers_from_page/);
+  assert.match(lessonTools, /function matching_answers_from_page/);
+  assert.match(lessonSmoke, /page_type:\s*'essay'/);
+  assert.match(lessonSmoke, /page_type:\s*'matching'/);
   assert.match(lessonTools, /function normalise_numerical_answer/);
   assert.match(lessonTools, /use_regular_expressions/);
   assert.match(lessonTools, /function get_page/);
@@ -1445,6 +1461,8 @@ test('protected target and restricted-permission gates cover production hardenin
   const packageJson = JSON.parse(await fs.readFile(fromRoot('package.json'), 'utf8'));
   const releaseCheck = await fs.readFile(fromRoot('tools/release-check.mjs'), 'utf8');
   const protectedCheck = await fs.readFile(fromRoot('tools/protected-target-check.mjs'), 'utf8');
+  const npmPack = await fs.readFile(fromRoot('tools/pack-npm-package.mjs'), 'utf8');
+  const checksumTool = await fs.readFile(fromRoot('tools/generate-release-checksums.mjs'), 'utf8');
   const protectedSmoke = await fs.readFile(fromRoot('tests/smoke/protected-target-readonly.test.mjs'), 'utf8');
   const restrictedSmoke = await fs.readFile(fromRoot('tests/smoke/restricted-permissions.test.mjs'), 'utf8');
 
@@ -1452,9 +1470,16 @@ test('protected target and restricted-permission gates cover production hardenin
   assert.equal(packageJson.scripts['release:protected:php'], 'node tools/protected-target-check.mjs --php-lint');
   assert.match(releaseCheck, /npm', \['run', 'lint:js'\]/);
   assert.match(releaseCheck, /npm', \['run', 'lint:php'\]/);
+  assert.match(releaseCheck, /release:checksums:check/);
   assert.match(protectedCheck, /MOODLE_BASE_URL/);
   assert.match(protectedCheck, /MOODLE_REST_TOKEN/);
   assert.match(protectedCheck, /plugin:php:lint:server/);
+  for (const processScript of [releaseCheck, protectedCheck, npmPack]) {
+    assert.match(processScript, /shell:\s*false/);
+    assert.doesNotMatch(processScript, /shell:\s*process\.platform/);
+  }
+  assert.match(checksumTool, /createHash\('sha256'\)/);
+  assert.equal(packageJson.scripts['release:checksums:check'], 'node tools/generate-release-checksums.mjs --check');
 
   for (const operationName of ['get_moodlia_status', 'get_current_user', 'get_courses', 'tools/list']) {
     assert.ok(protectedSmoke.includes(operationName), `protected smoke must cover ${operationName}.`);

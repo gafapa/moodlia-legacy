@@ -39,18 +39,18 @@ test('remaining high-risk subelement writes stay documented and unexposed until 
     );
   }
 
-  assert.match(boundaries, /Feedback item types beyond textfield, textarea, numeric, multichoice, multichoicerated, label, info, captcha creation, and pagebreak creation/);
-  assert.match(boundaries, /Lesson question page types beyond truefalse, shortanswer, multichoice, and numerical/);
-  assert.match(boundaries, /Workshop grading form strategies beyond accumulative, comments, number-of-errors, and rubric/);
+  assert.match(boundaries, /Third-party Feedback item types/);
+  assert.match(boundaries, /Lesson structural cluster\/end-marker page creation/);
+  assert.match(boundaries, /Third-party Workshop grading strategies/);
   assert.match(boundaries, /\[remaining-api-validation\.md\]\(remaining-api-validation\.md\)/);
 
   for (const marker of [
     'feedback_get_item_class()',
-    'Status: partially implemented for textfield, textarea, numeric, multichoice, multichoicerated, label, info, captcha creation, and pagebreak creation.',
-    'Status: partially implemented for content pages, truefalse, shortanswer, multichoice, and numerical question pages.',
-    'Status: partially implemented for the accumulative, comments, number-of-errors, and rubric strategies.',
+    'Status: complete for Moodle 5.0 core Feedback item types.',
+    'Status: complete for content pages and Moodle 5.0 core question pages.',
+    'Status: complete for Moodle 5.0 core Workshop grading strategies.',
     'save_edit_strategy_form',
-    'Required evidence before broadening implementation'
+    'Required evidence before extending'
   ]) {
     assert.ok(validation.includes(marker), `remaining API validation docs must include ${marker}.`);
   }

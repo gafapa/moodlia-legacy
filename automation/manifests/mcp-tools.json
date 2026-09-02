@@ -2,6 +2,11 @@
   "tools": [
     "get_current_user",
     "get_moodlia_status",
+    "list_plugins",
+    "get_plugin_details",
+    "get_plugin_dependencies",
+    "check_plugin_updates",
+    "set_plugin_enabled",
     "get_courses",
     "get_course_categories",
     "create_course_category",

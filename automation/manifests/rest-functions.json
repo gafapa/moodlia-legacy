@@ -2,6 +2,11 @@
   "functions": [
     "local_moodlia_get_current_user",
     "local_moodlia_get_moodlia_status",
+    "local_moodlia_list_plugins",
+    "local_moodlia_get_plugin_details",
+    "local_moodlia_get_plugin_dependencies",
+    "local_moodlia_check_plugin_updates",
+    "local_moodlia_set_plugin_enabled",
     "local_moodlia_get_courses",
     "local_moodlia_get_course_categories",
     "local_moodlia_create_course_category",

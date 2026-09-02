@@ -10,24 +10,24 @@ MoodlIA exposes activity subelements when Moodle provides a public API path that
 - Course activity-completion audit and repair through Moodle course-module APIs and MoodlIA's audited `update_module` path. This covers stale Book grade-completion rules and supports dry-run repair before changing Moodle state.
 - Choice options, responses, and results through Moodle Choice APIs.
 - Database fields and entries through Moodle Database APIs.
-- Feedback item reads, page item reads, analysis reads, finished response reads, item creation/update for `textfield`, `textarea`, `numeric`, `multichoice`, `multichoicerated`, `label`, and `info`, captcha creation, pagebreak creation, and item deletion through Moodle Feedback APIs and item class APIs.
+- Feedback item reads, page item reads, analysis reads, finished response reads, and the complete Moodle 5.0 core item set through Moodle Feedback APIs and item class APIs: create/update for `textfield`, `textarea`, `numeric`, `multichoice`, `multichoicerated`, `label`, and `info`, plus create-only `captcha` and `pagebreak` items according to their native semantics.
 - Folder and Resource file reads, downloads, and deletes through Moodle File API rules.
 - Forum discussions, posts, and discussion state through Moodle Forum APIs.
 - Glossary entries, categories, authors, browse filters, search, pending approval reads, and entry CRUD through Moodle Glossary APIs.
 - Lesson page, jump, access, grade, timer, and attempt report reads through Moodle Lesson APIs.
-- Lesson content page creation, update, deletion, branch jump mutation, truefalse, shortanswer, multichoice, and numerical question page creation/update through Moodle Lesson page component APIs. Other question-page type-specific payloads remain intentionally unavailable.
+- Lesson content page creation, update, deletion, branch jump mutation, and all Moodle 5.0 core question-page types through Moodle Lesson page component APIs: truefalse, shortanswer, multichoice, numerical, essay, and matching.
 - Quiz question slots, attempts, attempt data, attempt review, review options, grades, and view events through Moodle Quiz APIs.
 - Wiki pages, subwikis, files, and view events through Moodle Wiki APIs.
 - Workshop phases, user plans, grades, grade reports, reviewer/submission assessment reads, allocations, assessment form-definition reads, assessment updates, assessment evaluation, and submissions through Moodle Workshop APIs.
-- Workshop accumulative, comments, number-of-errors, and rubric grading form creation/replacement through Moodle Workshop grading strategy APIs, limited to setup phase and the active strategy.
+- All Moodle 5.0 core Workshop grading strategies—accumulative, comments, number-of-errors, and rubric—through Moodle Workshop grading strategy APIs, limited to setup phase and the active strategy.
 
 ## Intentionally Not Exposed Yet
 
 These areas remain blocked until a stable Moodle API path is identified and tested:
 
-- Feedback item types beyond textfield, textarea, numeric, multichoice, multichoicerated, label, info, captcha creation, and pagebreak creation, plus direct response-value mutation.
-- Lesson question page types beyond truefalse, shortanswer, multichoice, and numerical, and unsupported answer/jump payloads beyond content-page branches, truefalse answers, shortanswer answers, multichoice answers, and numerical answers.
-- Workshop grading form strategies beyond accumulative, comments, number-of-errors, and rubric, and standalone assessment creation outside Moodle's allocation flow.
+- Third-party Feedback item types and direct response-value mutation.
+- Lesson structural cluster/end-marker page creation and unsupported payloads outside the documented content and six core question-page schemas.
+- Third-party Workshop grading strategies and standalone assessment creation outside Moodle's allocation flow.
 
 ## Required Standard Before Adding One
 
@@ -44,8 +44,8 @@ Every new subelement write must satisfy all of these conditions:
 
 ## Preferred Implementation Order
 
-1. Additional Feedback item types, only after validating the type-specific item class payload and smoke testing UI-visible item state.
-2. Additional Lesson question page types beyond truefalse, shortanswer, multichoice, and numerical, only after validating each page and answer class across the supported Moodle versions with ownership checks and smoke tests that confirm page order, jumps, scoring, and content.
-3. Additional Workshop grading form strategies beyond accumulative, comments, number-of-errors, and rubric, only after identifying stable subplugin APIs, payload schemas, and capability boundaries.
+1. Lesson structural cluster and end-marker pages, only if portable course generation needs them and their navigation invariants can be smoke tested.
+2. Third-party Feedback item types or Workshop grading strategies, only through explicit extension contracts for installed subplugins.
+3. Direct Feedback response mutation or standalone Workshop assessment creation, only after validating participant ownership, attempt state, grading side effects, and Moodle event behavior.
 
 See [remaining-api-validation.md](remaining-api-validation.md) for the current source-level validation notes and the evidence required before exposing these writes.

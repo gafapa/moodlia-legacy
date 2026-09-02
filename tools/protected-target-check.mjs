@@ -27,12 +27,13 @@ console.log('MoodlIA protected target checks completed.');
 function run(command, args) {
   const label = `${command} ${args.join(' ')}`;
   console.log(`\n> ${label}`);
+  const resolved = resolveCommand(command, args);
 
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(resolved.command, resolved.args, {
       cwd: process.cwd(),
       stdio: 'inherit',
-      shell: process.platform === 'win32'
+      shell: false
     });
 
     child.on('error', reject);
@@ -45,4 +46,24 @@ function run(command, args) {
       reject(new Error(`${label} exited with code ${code ?? 1}`));
     });
   });
+}
+
+function resolveCommand(command, args) {
+  if (command === 'npm') {
+    if (!process.env.npm_execpath) {
+      throw new Error('Run protected target checks through an npm release script.');
+    }
+    return {
+      command: process.execPath,
+      args: [process.env.npm_execpath, ...args]
+    };
+  }
+  if (command === 'node') {
+    return {
+      command: process.execPath,
+      args
+    };
+  }
+
+  return { command, args };
 }

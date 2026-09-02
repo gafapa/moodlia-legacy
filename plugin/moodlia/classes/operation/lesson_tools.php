@@ -1,16 +1,24 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * Shared lesson helpers.
  *
  * @package    local_moodlia
- * @copyright  2026
+ * @copyright  2026 Pablo Gallego
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -36,6 +44,12 @@ class lesson_tools {
 
     /** Moodle Lesson numerical question page type id. */
     private const NUMERICAL_PAGE_TYPE = 8;
+
+    /** Moodle Lesson essay question page type id. */
+    private const ESSAY_PAGE_TYPE = 10;
+
+    /** Moodle Lesson matching question page type id. */
+    private const MATCHING_PAGE_TYPE = 5;
 
     /**
      * Load Moodle Lesson APIs.
@@ -256,11 +270,14 @@ class lesson_tools {
             'multiple-choice' => 'multichoice',
             'short_answer' => 'shortanswer',
             'short-answer' => 'shortanswer',
+            'match' => 'matching',
         ];
         $normalized = $aliases[$normalized] ?? $normalized;
 
-        if (!in_array($normalized, ['content', 'truefalse', 'shortanswer', 'multichoice', 'numerical'], true)) {
-            throw new \invalid_parameter_exception('page_type must be content, truefalse, shortanswer, multichoice, or numerical.');
+        if (!in_array($normalized, ['content', 'essay', 'matching', 'truefalse', 'shortanswer', 'multichoice', 'numerical'], true)) {
+            throw new \invalid_parameter_exception(
+                'page_type must be content, essay, matching, truefalse, shortanswer, multichoice, or numerical.'
+            );
         }
 
         return $normalized;
@@ -314,6 +331,26 @@ class lesson_tools {
      */
     public static function is_numerical_page(\stdClass $properties): bool {
         return (int) ($properties->qtype ?? 0) === self::NUMERICAL_PAGE_TYPE;
+    }
+
+    /**
+     * Return whether a Lesson page is a supported essay question page.
+     *
+     * @param \stdClass $properties Page properties.
+     * @return bool
+     */
+    public static function is_essay_page(\stdClass $properties): bool {
+        return (int) ($properties->qtype ?? 0) === self::ESSAY_PAGE_TYPE;
+    }
+
+    /**
+     * Return whether a Lesson page is a supported matching question page.
+     *
+     * @param \stdClass $properties Page properties.
+     * @return bool
+     */
+    public static function is_matching_page(\stdClass $properties): bool {
+        return (int) ($properties->qtype ?? 0) === self::MATCHING_PAGE_TYPE;
     }
 
     /**
@@ -487,6 +524,101 @@ class lesson_tools {
     }
 
     /**
+     * Decode and validate a Lesson essay grading definition.
+     *
+     * @param string $answersjson JSON object with jump and score settings.
+     * @return array
+     */
+    public static function decode_essay_answers(string $answersjson): array {
+        $decoded = json_decode($answersjson, true);
+        if (!is_array($decoded) || self::is_list_array($decoded)) {
+            throw new \invalid_parameter_exception('answers must be a JSON object for essay pages.');
+        }
+
+        return [
+            'jump_to' => self::normalise_jump($decoded['jump_to'] ?? $decoded['jumpto'] ?? -1, 'essay jump_to'),
+            'score' => self::normalise_score($decoded['score'] ?? 1),
+        ];
+    }
+
+    /**
+     * Decode and validate a Lesson matching definition.
+     *
+     * @param string $answersjson JSON object with responses and matching pairs.
+     * @return array
+     */
+    public static function decode_matching_answers(string $answersjson): array {
+        $decoded = json_decode($answersjson, true);
+        if (!is_array($decoded) || self::is_list_array($decoded)) {
+            throw new \invalid_parameter_exception('answers must be a JSON object for matching pages.');
+        }
+
+        $pairs = $decoded['pairs'] ?? null;
+        if (!is_array($pairs) || !self::is_list_array($pairs) || count($pairs) < 2) {
+            throw new \invalid_parameter_exception('matching answers must contain at least two pairs.');
+        }
+
+        $normalizedpairs = [];
+        $seenprompts = [];
+        $seenmatches = [];
+        foreach ($pairs as $pair) {
+            if (!is_array($pair)) {
+                throw new \invalid_parameter_exception('Each matching pair must be an object.');
+            }
+
+            $prompt = trim((string) ($pair['prompt'] ?? $pair['answer'] ?? ''));
+            $match = trim((string) ($pair['match'] ?? $pair['response'] ?? ''));
+            if ($prompt === '' || $match === '') {
+                throw new \invalid_parameter_exception('Each matching pair must contain non-empty prompt and match values.');
+            }
+            if ($match !== strip_tags($match)) {
+                throw new \invalid_parameter_exception('Matching pair match values must be plain text.');
+            }
+
+            $promptkey = strtolower($prompt);
+            $matchkey = strtolower($match);
+            if (isset($seenprompts[$promptkey]) || isset($seenmatches[$matchkey])) {
+                throw new \invalid_parameter_exception('Matching pair prompts and match values must be unique.');
+            }
+            $seenprompts[$promptkey] = true;
+            $seenmatches[$matchkey] = true;
+
+            $normalizedpairs[] = [
+                'prompt' => $prompt,
+                'prompt_format' => self::normalise_text_format(
+                    $pair['prompt_format'] ?? $pair['answer_format'] ?? FORMAT_HTML,
+                    'prompt_format'
+                ),
+                'match' => $match,
+            ];
+        }
+
+        return [
+            'correct_response' => (string) ($decoded['correct_response'] ?? ''),
+            'correct_response_format' => self::normalise_text_format(
+                $decoded['correct_response_format'] ?? FORMAT_HTML,
+                'correct_response_format'
+            ),
+            'correct_jump_to' => self::normalise_jump(
+                $decoded['correct_jump_to'] ?? $decoded['correct_jumpto'] ?? -1,
+                'correct_jump_to'
+            ),
+            'correct_score' => self::normalise_score($decoded['correct_score'] ?? 1),
+            'wrong_response' => (string) ($decoded['wrong_response'] ?? ''),
+            'wrong_response_format' => self::normalise_text_format(
+                $decoded['wrong_response_format'] ?? FORMAT_HTML,
+                'wrong_response_format'
+            ),
+            'wrong_jump_to' => self::normalise_jump(
+                $decoded['wrong_jump_to'] ?? $decoded['wrong_jumpto'] ?? 0,
+                'wrong_jump_to'
+            ),
+            'wrong_score' => self::normalise_score($decoded['wrong_score'] ?? 0),
+            'pairs' => $normalizedpairs,
+        ];
+    }
+
+    /**
      * Decode shared open-question answer rows.
      *
      * @param array $items Answer rows.
@@ -607,6 +739,16 @@ class lesson_tools {
             $properties->score[$index] = $branch['score'];
             $index++;
         }
+        while ($index < (int) $lesson->maxanswers) {
+            $properties->answer_editor[$index] = '';
+            $properties->response_editor[$index] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->jumpto[$index] = 0;
+            $properties->score[$index] = 0;
+            $index++;
+        }
 
         return $properties;
     }
@@ -664,6 +806,18 @@ class lesson_tools {
             ];
             $properties->jumpto[$index] = $answer['jump_to'];
             $properties->score[$index] = $answer['score'];
+        }
+        for ($index = count($answers); $index < (int) $lesson->maxanswers; $index++) {
+            $properties->answer_editor[$index] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->response_editor[$index] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->jumpto[$index] = 0;
+            $properties->score[$index] = 0;
         }
 
         return $properties;
@@ -731,6 +885,18 @@ class lesson_tools {
             $properties->jumpto[$index] = $answer['jump_to'];
             $properties->score[$index] = $answer['score'];
         }
+        for ($index = count($answers); $index < (int) $lesson->maxanswers; $index++) {
+            $properties->answer_editor[$index] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->response_editor[$index] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->jumpto[$index] = 0;
+            $properties->score[$index] = 0;
+        }
 
         return $properties;
     }
@@ -797,6 +963,126 @@ class lesson_tools {
     }
 
     /**
+     * Build Moodle Lesson page properties for an essay question page.
+     *
+     * @param \lesson $lesson Lesson domain object.
+     * @param string $title Page title.
+     * @param string $content Page content.
+     * @param int $contentformat Content format.
+     * @param array $definition Normalized essay definition.
+     * @param int $afterpageid Previous page id or 0 for first.
+     * @return \stdClass
+     */
+    public static function essay_page_properties(
+        \lesson $lesson,
+        string $title,
+        string $content,
+        int $contentformat,
+        array $definition,
+        int $afterpageid = 0
+    ): \stdClass {
+        $title = trim($title);
+        if ($title === '') {
+            throw new \invalid_parameter_exception('title must be non-empty.');
+        }
+
+        return (object) [
+            'title' => $title,
+            'contents_editor' => [
+                'text' => $content,
+                'format' => $contentformat,
+            ],
+            'qtype' => self::ESSAY_PAGE_TYPE,
+            'pageid' => max(0, $afterpageid),
+            'jumpto' => [
+                (int) ($definition['jump_to'] ?? -1),
+            ],
+            'score' => [
+                (float) ($definition['score'] ?? 1),
+            ],
+        ];
+    }
+
+    /**
+     * Build Moodle Lesson page properties for a matching question page.
+     *
+     * @param \lesson $lesson Lesson domain object.
+     * @param string $title Page title.
+     * @param string $content Page content.
+     * @param int $contentformat Content format.
+     * @param array $definition Normalized matching definition.
+     * @param int $afterpageid Previous page id or 0 for first.
+     * @return \stdClass
+     */
+    public static function matching_page_properties(
+        \lesson $lesson,
+        string $title,
+        string $content,
+        int $contentformat,
+        array $definition,
+        int $afterpageid = 0
+    ): \stdClass {
+        $title = trim($title);
+        if ($title === '') {
+            throw new \invalid_parameter_exception('title must be non-empty.');
+        }
+
+        $pairs = $definition['pairs'] ?? [];
+        if (count($pairs) < 2) {
+            throw new \invalid_parameter_exception('matching pages require at least two pairs.');
+        }
+        if (count($pairs) > (int) $lesson->maxanswers) {
+            throw new \invalid_parameter_exception('matching pair count must not exceed the Lesson max_answers setting.');
+        }
+
+        $properties = (object) [
+            'title' => $title,
+            'contents_editor' => [
+                'text' => $content,
+                'format' => $contentformat,
+            ],
+            'qtype' => self::MATCHING_PAGE_TYPE,
+            'pageid' => max(0, $afterpageid),
+            'answer_editor' => [
+                [
+                    'text' => (string) ($definition['correct_response'] ?? ''),
+                    'format' => (int) ($definition['correct_response_format'] ?? FORMAT_HTML),
+                ],
+                [
+                    'text' => (string) ($definition['wrong_response'] ?? ''),
+                    'format' => (int) ($definition['wrong_response_format'] ?? FORMAT_HTML),
+                ],
+            ],
+            'response_editor' => ['', ''],
+            'jumpto' => [
+                (int) ($definition['correct_jump_to'] ?? -1),
+                (int) ($definition['wrong_jump_to'] ?? 0),
+            ],
+            'score' => [
+                (float) ($definition['correct_score'] ?? 1),
+                (float) ($definition['wrong_score'] ?? 0),
+            ],
+        ];
+
+        foreach ($pairs as $pair) {
+            $properties->answer_editor[] = [
+                'text' => $pair['prompt'],
+                'format' => $pair['prompt_format'],
+            ];
+            $properties->response_editor[] = $pair['match'];
+        }
+        while (count($properties->answer_editor) < (int) $lesson->maxanswers + 2) {
+            $properties->answer_editor[] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->response_editor[] = '';
+        }
+
+        return $properties;
+    }
+
+    /**
      * Build Moodle Lesson page properties for open-answer question pages.
      *
      * @param \lesson $lesson Lesson domain object.
@@ -859,6 +1145,18 @@ class lesson_tools {
             ];
             $properties->jumpto[$index] = $answer['jump_to'];
             $properties->score[$index] = $answer['score'];
+        }
+        for ($index = count($answers); $index < (int) $lesson->maxanswers; $index++) {
+            $properties->answer_editor[$index] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->response_editor[$index] = [
+                'text' => '',
+                'format' => FORMAT_HTML,
+            ];
+            $properties->jumpto[$index] = 0;
+            $properties->score[$index] = 0;
         }
 
         return $properties;
@@ -976,6 +1274,69 @@ class lesson_tools {
     public static function numerical_answers_from_page(\lesson_page $page): array {
         return [
             'answers' => self::open_question_answers_from_page($page, 'numerical'),
+        ];
+    }
+
+    /**
+     * Return current essay settings for update preservation.
+     *
+     * @param \lesson_page $page Lesson page object.
+     * @return array
+     */
+    public static function essay_answers_from_page(\lesson_page $page): array {
+        $answers = array_values($page->get_answers());
+        $answer = $answers[0] ?? null;
+        if (!$answer) {
+            throw new \invalid_parameter_exception('Existing essay page must contain its grading answer before update.');
+        }
+
+        return [
+            'jump_to' => (int) ($answer->jumpto ?? -1),
+            'score' => (float) ($answer->score ?? 1),
+        ];
+    }
+
+    /**
+     * Return current matching settings for update preservation.
+     *
+     * @param \lesson_page $page Lesson page object.
+     * @return array
+     */
+    public static function matching_answers_from_page(\lesson_page $page): array {
+        $answers = array_values($page->get_answers());
+        if (count($answers) < 4) {
+            throw new \invalid_parameter_exception('Existing matching page must contain two responses and at least two pairs.');
+        }
+
+        $correct = $answers[0];
+        $wrong = $answers[1];
+        $pairs = [];
+        foreach (array_slice($answers, 2) as $answer) {
+            $prompt = (string) ($answer->answer ?? '');
+            $match = (string) ($answer->response ?? '');
+            if ($prompt === '' && $match === '') {
+                continue;
+            }
+            $pairs[] = [
+                'prompt' => $prompt,
+                'prompt_format' => (int) ($answer->answerformat ?? FORMAT_HTML),
+                'match' => $match,
+            ];
+        }
+        if (count($pairs) < 2) {
+            throw new \invalid_parameter_exception('Existing matching page must contain at least two complete pairs.');
+        }
+
+        return [
+            'correct_response' => (string) ($correct->answer ?? ''),
+            'correct_response_format' => (int) ($correct->answerformat ?? FORMAT_HTML),
+            'correct_jump_to' => (int) ($correct->jumpto ?? -1),
+            'correct_score' => (float) ($correct->score ?? 1),
+            'wrong_response' => (string) ($wrong->answer ?? ''),
+            'wrong_response_format' => (int) ($wrong->answerformat ?? FORMAT_HTML),
+            'wrong_jump_to' => (int) ($wrong->jumpto ?? 0),
+            'wrong_score' => (float) ($wrong->score ?? 0),
+            'pairs' => $pairs,
         ];
     }
 

@@ -163,6 +163,44 @@ moodlia get-moodlia-status
 
 `get-moodlia-status` is the MoodlIA-native diagnostic endpoint for tokens that cannot call Moodle's generic site-info web service. It returns the plugin version, Moodle version, current user, API capability state, REST service shortname, and the registered MoodlIA function list.
 
+## Plugin Inventory And State
+
+Plugin administration requires both `local/moodlia:useapi` and `local/moodlia:manageplugins`. The latter is not granted to any role archetype by default and should be assigned only to a dedicated administrative service account.
+
+List all additional plugins:
+
+```text
+moodlia list-plugins --source additional
+```
+
+Filter by Moodle plugin type or installation status:
+
+```text
+moodlia list-plugins --plugin-type mod --status uptodate
+```
+
+Inspect one plugin and its dependency graph:
+
+```text
+moodlia get-plugin-details --component mod_forum
+moodlia get-plugin-dependencies --component mod_forum
+```
+
+Read cached compatible updates, or explicitly ask Moodle to refresh update information from Moodle.org:
+
+```text
+moodlia check-plugin-updates
+moodlia check-plugin-updates --component mod_forum --refresh true
+```
+
+Change the enabled state only when the inventory reports `can_change_enabled: true`:
+
+```text
+moodlia set-plugin-enabled --component mod_forum --enabled false
+```
+
+The state operation is idempotent and verifies Moodle's state after a change. It rejects plugins with a pending install or upgrade, excludes multi-state filter and repository plugins from the boolean operation, refuses to enable plugins with unsatisfied requirements, refuses to disable plugins needed by an enabled dependent, and never changes MoodlIA's own state. These commands do not install, update, uninstall, upload, or remove plugin code; those actions require a controlled server deployment and Moodle upgrade workflow.
+
 Update the course:
 
 ```text
@@ -589,9 +627,9 @@ moodlia set-workshop-grading-form --course-id <course_id> --module-id <workshop_
 moodlia set-workshop-grading-form --course-id <course_id> --module-id <workshop_module_id> --strategy rubric --definition '{"layout":"list","dimensions":[{"description":"<p>Content quality</p>","levels":[{"definition":"Missing","grade":0},{"definition":"Adequate","grade":5},{"definition":"Strong","grade":10}]},{"description":"<p>Practical applicability</p>","levels":[{"definition":"Missing","grade":0},{"definition":"Adequate","grade":5},{"definition":"Strong","grade":10}]}]}'
 ```
 
-Workshop grading-form writes currently support the active `accumulative`, `comments`, `numerrors`, and `rubric` strategies. The Workshop must still be in setup phase and the requested strategy must match the module strategy. Other strategy definitions remain intentionally separate until their Moodle subplugin payloads are validated.
+Workshop grading-form writes support all Moodle 5.0 core strategies: `accumulative`, `comments`, `numerrors`, and `rubric`. The Workshop must still be in setup phase and the requested strategy must match the module strategy. Third-party strategy definitions require an explicit extension contract.
 
-Create and manage Lesson content pages plus truefalse, shortanswer, multichoice, and numerical question pages:
+Create and manage Lesson content pages plus all Moodle 5.0 core question page types:
 
 ```text
 moodlia create-lesson-page --course-id <course_id> --module-id <lesson_module_id> --title "Start" --content "<p>Read this page first.</p>" --branches '{"branches":[{"title":"Continue","jump_to":"next_page"}]}'
@@ -601,10 +639,12 @@ moodlia update-lesson-page --course-id <course_id> --module-id <lesson_module_id
 moodlia create-lesson-page --course-id <course_id> --module-id <lesson_module_id> --page-type shortanswer --title "Type it" --content "<p>Type MoodlIA.</p>" --answers '{"use_regular_expressions":false,"answers":[{"answer":"MoodlIA","response":"Correct","jump_to":"next_page","score":1}]}'
 moodlia create-lesson-page --course-id <course_id> --module-id <lesson_module_id> --page-type multichoice --title "Choose" --content "<p>Select the best answer.</p>" --answers '{"multi_answer":false,"answers":[{"answer":"Best option","response":"Correct","jump_to":"next_page","score":1},{"answer":"Distractor","response":"Review the content","jump_to":"this_page","score":0}]}'
 moodlia create-lesson-page --course-id <course_id> --module-id <lesson_module_id> --page-type numerical --title "Range" --content "<p>Enter a value from 8 to 10.</p>" --answers '{"answers":[{"answer":"8:10","response":"Correct range","jump_to":"end_of_lesson","score":1}]}'
+moodlia create-lesson-page --course-id <course_id> --module-id <lesson_module_id> --page-type essay --title "Reflect" --content "<p>Explain how you would apply this concept.</p>" --answers '{"jump_to":"next_page","score":1}'
+moodlia create-lesson-page --course-id <course_id> --module-id <lesson_module_id> --page-type matching --title "Match concepts" --content "<p>Match each concept to its definition.</p>" --answers '{"correct_response":"All pairs are correct.","wrong_response":"Review the pairs.","pairs":[{"prompt":"Formative","match":"Improves learning during the process"},{"prompt":"Summative","match":"Evaluates learning at the end"}]}'
 moodlia delete-lesson-page --course-id <course_id> --module-id <lesson_module_id> --page-id <page_id>
 ```
 
-Lesson page writes currently support Moodle Lesson content pages with branch buttons, truefalse question pages with exactly two answers, shortanswer pages with accepted answer strings and optional regular-expression mode, multichoice question pages with single-answer or multi-answer mode, and numerical pages with numeric answers or inclusive `min:max` ranges. Other question page types remain intentionally separate because each type has its own answer and scoring payload rules.
+Lesson page writes support content pages with branch buttons and Moodle's six core question types: truefalse, shortanswer, multichoice, numerical, essay, and matching. Structural cluster and end-marker page types remain outside this operation because they are navigation structures rather than question pages.
 
 ## Question Bank And Quiz
 

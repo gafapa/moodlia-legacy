@@ -4,7 +4,7 @@ MoodlIA intentionally avoids activity subelement writes unless Moodle exposes a 
 
 ## Feedback Item Creation And Update
 
-Status: partially implemented for textfield, textarea, numeric, multichoice, multichoicerated, label, info, captcha creation, and pagebreak creation.
+Status: complete for Moodle 5.0 core Feedback item types.
 
 Moodle 4.5 exposes item-type classes through `feedback_get_item_class()`. MoodlIA now exposes `create_feedback_item` and `update_feedback_item` for `textfield`, `textarea`, `numeric`, `multichoice`, `multichoicerated`, `label`, and `info`. Captcha creation is exposed as a narrow create-only operation through Moodle's `feedback_item_captcha` class; updates, duplicate captcha items, non-empty definitions, optional dependencies, and non-required captcha settings are rejected before Moodle can reach the item class `notice()/exit` paths. Pagebreak creation uses Moodle's `feedback_create_pagebreak()` helper, matching the component edit UI. The operation builds a narrow type-specific payload and delegates persistence to Moodle's item class via `build_editform()`, `set_data()`, and `save_item()` where the item type has a writer class. Position changes use Moodle's `feedback_move_item()` and `feedback_renumber_items()`. MoodlIA does not write `feedback_item` tables directly.
 
@@ -30,17 +30,16 @@ Implemented evidence:
 - Persistence goes through Moodle item classes and type-specific `save_item()` methods.
 - Static coverage verifies contract, REST, MCP, CLI, services, capabilities, and no direct `$DB` usage in MoodlIA's operation boundary.
 
-Required evidence before broadening implementation:
+Required evidence before extending beyond Moodle core:
 
-- Type-specific payload contracts for any additional item type available in a target Moodle version, such as captcha when installed/enabled.
-- Smoke coverage for each additional supported type.
+- Type-specific payload contracts and smoke coverage for any third-party item type.
 - Evidence that updating items after responses exist preserves Moodle response-value semantics.
 
 ## Lesson Page Mutation
 
-Status: partially implemented for content pages, truefalse, shortanswer, multichoice, and numerical question pages.
+Status: complete for content pages and Moodle 5.0 core question pages.
 
-Moodle 4.5 has `lesson_page::create(...)`, `lesson_page::update(...)`, and page `delete()` methods. MoodlIA now exposes a narrow content-page contract that creates, updates, and deletes Lesson content pages and their branch jumps through those component APIs. It also exposes truefalse, shortanswer, multichoice, and numerical question-page creation and update through the same page component APIs. Shortanswer and numerical pages use Moodle's answer editor, response editor, jump, and score arrays; shortanswer optionally enables Moodle's regular-expression mode, and numerical answers are restricted to numbers or inclusive `min:max` ranges. The operation intentionally does not expose arbitrary Lesson question page types yet, because each page type has its own answer, scoring, file, and jump payload contract.
+Moodle exposes `lesson_page::create(...)`, `lesson_page::update(...)`, and page `delete()` methods. MoodlIA uses those component APIs for content pages and all six core question types: truefalse, shortanswer, multichoice, numerical, essay, and matching. Essay pages expose their manual-grading jump and score settings. Matching pages expose correct/wrong feedback, scores, jumps, and at least two unique prompt/match pairs.
 
 Primary sources:
 
@@ -49,25 +48,28 @@ Primary sources:
 - https://raw.githubusercontent.com/moodle/moodle/MOODLE_405_STABLE/mod/lesson/pagetypes/shortanswer.php
 - https://raw.githubusercontent.com/moodle/moodle/MOODLE_405_STABLE/mod/lesson/pagetypes/multichoice.php
 - https://raw.githubusercontent.com/moodle/moodle/MOODLE_405_STABLE/mod/lesson/pagetypes/numerical.php
+- https://raw.githubusercontent.com/moodle/moodle/MOODLE_500_STABLE/mod/lesson/pagetypes/essay.php
+- https://raw.githubusercontent.com/moodle/moodle/MOODLE_500_STABLE/mod/lesson/pagetypes/matching.php
 
 Implemented evidence:
 
-- Supported page types are limited to content pages with branch definitions, truefalse question pages with exactly two answers, shortanswer question pages with one or more accepted answers, multichoice question pages with single-answer or multi-answer choices, and numerical question pages with one or more number/range answers.
+- Supported page types include content pages with branch definitions and every Moodle 5.0 core question type.
 - Truefalse answer payloads validate non-empty unique answer text, response text, Moodle text formats, jump targets, and numeric scores before delegating to Moodle's page APIs.
 - Shortanswer and numerical answer payloads validate non-empty unique answer text, response text, Moodle text formats, jump targets, numeric scores, optional regular-expression mode, and numerical range syntax before delegating to Moodle's page APIs.
+- Essay payloads validate manual-grading jump and score settings. Matching payloads validate unique non-empty prompts, unique plain-text matches, correct/wrong feedback, text formats, scores, jumps, and the Lesson maximum-answer limit.
 - Ownership checks verify that every target page belongs to the selected Lesson module before update or delete.
 - Static coverage requires contract, REST, MCP, CLI, services, helper APIs, and smoke syntax for supported content and question page create/update/delete paths.
 
-Required evidence before broadening implementation:
+Required evidence before extending beyond core question pages:
 
-- Supported schemas for each additional Lesson question page type.
-- Smoke tests for scoring, jumps, files, and Moodle-visible rendering per page type.
+- Navigation and ordering invariants for structural cluster and end-marker pages.
+- Smoke tests for any future structural page mutation.
 
 ## Workshop Grading Form Mutation
 
-Status: partially implemented for the accumulative, comments, number-of-errors, and rubric strategies.
+Status: complete for Moodle 5.0 core Workshop grading strategies.
 
-Moodle Workshop grading-form subplugins expose strategy-specific `save_edit_strategy_form(...)` methods. MoodlIA now exposes `set_workshop_grading_form` for the active `accumulative`, `comments`, `numerrors`, and `rubric` strategies in setup phase only. The operation builds the form-shaped data required by Moodle and delegates persistence to the Workshop strategy instance instead of writing `workshopform_accumulative`, `workshopform_comments`, `workshopform_numerrors`, or `workshopform_rubric` tables directly. Number-of-errors writes include the dimension assertions and error-count grade mapping expected by Moodle's strategy form. Rubric replacement includes existing dimension and level ids from the Moodle strategy object so the subplugin can delete old rows through its own save path. Other strategies remain blocked until their payload contracts are narrowed and smoke tested.
+Moodle Workshop grading-form subplugins expose strategy-specific `save_edit_strategy_form(...)` methods. MoodlIA exposes `set_workshop_grading_form` for every Moodle 5.0 core strategy—`accumulative`, `comments`, `numerrors`, and `rubric`—in setup phase only. The operation builds the form-shaped data required by Moodle and delegates persistence to the Workshop strategy instance instead of writing strategy tables directly. Number-of-errors writes include the dimension assertions and error-count grade mapping expected by Moodle's strategy form. Rubric replacement includes existing dimension and level ids from the Moodle strategy object so the subplugin can delete old rows through its own save path. Third-party strategies remain blocked until their payload contracts are narrowed and smoke tested.
 
 Primary sources:
 
@@ -83,8 +85,8 @@ Implemented evidence:
 - Persistence goes through `grading_strategy_instance()->save_edit_strategy_form(...)`.
 - Static coverage verifies contract, REST, MCP, CLI, services, capabilities, and no direct `$DB` usage in the operation.
 
-Required evidence before broadening implementation:
+Required evidence before extending beyond Moodle core:
 
-- Exact public payload schema per additional strategy.
+- Exact public payload schema per third-party strategy.
 - Capability and phase rules for mutating the form after submissions or assessments exist.
 - A smoke test that writes a form definition, reads it back through `get_workshop_assessment_form_definition`, and verifies assessment updates still work.

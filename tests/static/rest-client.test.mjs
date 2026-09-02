@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  McpTransport,
   MoodleClientError,
   RestTransport,
   buildContractParameters,
   createMoodleClient,
+  createMoodleMcpClient,
   createMoodleRestClient,
   normalizeClientError,
   resolveMoodleUrl,
@@ -166,6 +168,15 @@ test('shared contract parameter builder strictly validates numbers, ranges, and 
     ratio: 0.75,
     options: '{"enabled":true}'
   });
+  assert.deepEqual(buildContractParameters(operation, {
+    count: '5',
+    ratio: '.75',
+    options: '{"enabled":true}'
+  }, { encoding: 'json' }), {
+    count: 5,
+    ratio: 0.75,
+    options: { enabled: true }
+  });
 
   assert.throws(
     () => buildContractParameters(operation, { count: '5abc' }),
@@ -309,7 +320,11 @@ test('Lesson page parameter validation rejects invalid question payload shapes e
       title: { type: 'string', required: true },
       content: { type: 'string', required: true },
       branches: { type: 'object', required: false },
-      page_type: { type: 'string', required: false, enum: ['content', 'multichoice', 'numerical', 'shortanswer', 'truefalse'] },
+      page_type: {
+        type: 'string',
+        required: false,
+        enum: ['content', 'essay', 'matching', 'multichoice', 'numerical', 'shortanswer', 'truefalse']
+      },
       answers: { type: 'object', required: false }
     }
   };
@@ -342,9 +357,9 @@ test('Lesson page parameter validation rejects invalid question payload shapes e
       module_id: 7,
       title: 'Check',
       content: '<p>Check this.</p>',
-      page_type: 'essay'
+      page_type: 'cluster'
     }),
-    /page_type must be one of: content, multichoice, numerical, shortanswer, truefalse/
+    /page_type must be one of: content, essay, matching, multichoice, numerical, shortanswer, truefalse/
   );
 
   assert.throws(
@@ -379,6 +394,169 @@ test('shared REST client reports Moodle REST payload errors', async () => {
       assert.equal(error.code, 'invalid_parameters');
       assert.equal(error.details.function_name, 'local_moodlia_get_courses');
       assert.equal(error.details.moodle_errorcode, 'invalidparameter');
+      return true;
+    }
+  );
+});
+
+test('MCP transport negotiates the protocol and calls canonical operations with JSON parameters', async () => {
+  const calls = [];
+  const client = createMoodleMcpClient({
+    baseUrl: 'https://moodle.example.test/learning',
+    token: 'test-token',
+    contract,
+    timeoutMs: 0,
+    fetchImplementation: async (url, options) => {
+      const request = JSON.parse(options.body);
+      calls.push({ url, options, request });
+
+      if (request.method === 'initialize') {
+        return new Response(JSON.stringify({
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            protocolVersion: '2025-11-25',
+            capabilities: { tools: {} },
+            serverInfo: { name: 'MoodlIA', version: '0.1.187' }
+          }
+        }), { status: 200 });
+      }
+      if (request.method === 'notifications/initialized') {
+        return new Response(null, { status: 202 });
+      }
+      if (request.params.name === 'get_courses') {
+        return new Response(JSON.stringify({
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            content: [{ type: 'text', text: '{"courses":[]}' }],
+            structuredContent: { courses: [] },
+            isError: false
+          }
+        }), { status: 200 });
+      }
+
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id: request.id,
+        result: {
+          content: [{ type: 'text', text: '{"module_id":10,"name":"Generated page"}' }],
+          structuredContent: { module_id: 10, name: 'Generated page' },
+          isError: false
+        }
+      }), { status: 200 });
+    }
+  });
+
+  assert.deepEqual(await client.get_courses({ visible: false }), { courses: [] });
+  assert.deepEqual(await client.create_module({
+    course_id: 42,
+    section_number: 1,
+    module_type: 'page',
+    name: 'Generated page',
+    options: { content: '<p>Hello</p>' }
+  }), { module_id: 10, name: 'Generated page' });
+
+  assert.equal(calls.length, 4);
+  assert.equal(String(calls[0].url), 'https://moodle.example.test/learning/local/moodlia/mcp.php');
+  assert.equal(calls[0].options.headers.authorization, 'Bearer test-token');
+  assert.equal(calls[0].options.headers['mcp-protocol-version'], '2025-11-25');
+  assert.deepEqual(calls.map(({ request }) => request.method), [
+    'initialize',
+    'notifications/initialized',
+    'tools/call',
+    'tools/call'
+  ]);
+  assert.equal(Object.hasOwn(calls[1].request, 'id'), false);
+  assert.deepEqual(calls[2].request.params, {
+    name: 'get_courses',
+    arguments: { visible: false }
+  });
+  assert.deepEqual(calls[3].request.params.arguments.options, {
+    content: '<p>Hello</p>'
+  });
+});
+
+test('MCP transport exposes ping and tool discovery after one initialization', async () => {
+  const methods = [];
+  const transport = new McpTransport({
+    endpoint: 'https://moodle.example.test/local/moodlia/mcp.php',
+    token: 'test-token',
+    timeoutMs: 0,
+    fetchImplementation: async (_url, options) => {
+      const request = JSON.parse(options.body);
+      methods.push(request.method);
+      if (request.method === 'notifications/initialized') {
+        return new Response(null, { status: 202 });
+      }
+
+      const result = request.method === 'initialize'
+        ? {
+            protocolVersion: '2025-11-25',
+            capabilities: { tools: {} },
+            serverInfo: { name: 'MoodlIA', version: '0.1.187' }
+          }
+        : request.method === 'tools/list'
+          ? { tools: [{ name: 'get_courses' }] }
+          : {};
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id: request.id,
+        result
+      }), { status: 200 });
+    }
+  });
+
+  assert.deepEqual(await transport.listTools(), [{ name: 'get_courses' }]);
+  assert.deepEqual(await transport.ping(), {});
+  assert.deepEqual(methods, ['initialize', 'notifications/initialized', 'tools/list', 'ping']);
+});
+
+test('MCP transport normalizes JSON-RPC errors using canonical server codes', async () => {
+  const transport = new McpTransport({
+    baseUrl: 'https://moodle.example.test',
+    token: 'test-token',
+    timeoutMs: 0,
+    fetchImplementation: async (_url, options) => {
+      const request = JSON.parse(options.body);
+      if (request.method === 'initialize') {
+        return new Response(JSON.stringify({
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            protocolVersion: '2025-11-25',
+            capabilities: {},
+            serverInfo: { name: 'MoodlIA', version: '0.1.187' }
+          }
+        }), { status: 200 });
+      }
+      if (request.method === 'notifications/initialized') {
+        return new Response(null, { status: 202 });
+      }
+
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id: request.id,
+        error: {
+          code: -32602,
+          message: 'Invalid parameters.',
+          data: {
+            code: 'invalid_parameters',
+            details: { parameter: 'limit' }
+          }
+        }
+      }), { status: 400 });
+    }
+  });
+
+  await assert.rejects(
+    () => transport.callOperation('get_courses', { limit: -1 }),
+    (error) => {
+      assert.ok(error instanceof MoodleClientError);
+      assert.equal(error.code, 'invalid_parameters');
+      assert.equal(error.details.method, 'tools/call');
+      assert.equal(error.details.jsonrpc_code, -32602);
+      assert.equal(error.details.parameter, 'limit');
       return true;
     }
   );

@@ -218,6 +218,33 @@ function assertLessonOpenAnswerPage(result, created, expected) {
   assert.ok(result.page.jumps.length >= expected.answers.length);
 }
 
+function assertLessonEssayPage(result, created, expectedTitle, expectedContent) {
+  assert.equal(result.page.module_id, created.course_module_id);
+  assert.equal(result.page.lesson_id, created.instance_id);
+  assert.equal(typeof result.page.page_id, 'number');
+  assert.equal(result.page.question_type, 10);
+  assert.equal(result.page.title, expectedTitle);
+  assert.match(result.page.content, new RegExp(expectedContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(result.page.branches_count, 1);
+  assert.equal(result.page.answer_ids.length, 1);
+  assert.equal(result.page.jumps.length, 1);
+}
+
+function assertLessonMatchingPage(result, created, expectedTitle, expectedContent, expectedPairs) {
+  assert.equal(result.page.module_id, created.course_module_id);
+  assert.equal(result.page.lesson_id, created.instance_id);
+  assert.equal(typeof result.page.page_id, 'number');
+  assert.equal(result.page.question_type, 5);
+  assert.equal(result.page.title, expectedTitle);
+  assert.match(result.page.content, new RegExp(expectedContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(result.page.branches_count, expectedPairs.length + 2);
+  for (const [prompt, match] of expectedPairs) {
+    assert.ok(result.page.branches.some((answer) => answer.title === prompt && answer.response === match));
+  }
+  assert.equal(result.page.answer_ids.length, expectedPairs.length + 2);
+  assert.equal(result.page.jumps.length, expectedPairs.length + 2);
+}
+
 function assertLessonPossibleJumps(jumps, created) {
   assert.equal(jumps.module_id, created.course_module_id);
   assert.equal(jumps.lesson_id, created.instance_id);
@@ -535,6 +562,112 @@ test('Lesson module lifecycle works through REST, MCP, and CLI', { skip: !hasCon
       page_id: restMultichoicePage.page.page_id
     });
     assert.equal(deletedRestMultichoicePage.deleted, true);
+
+    const restEssayPage = await callRestFunction(toRestFunctionName(contract, 'create_lesson_page'), {
+      course_id: courseId,
+      module_id: restLesson.course_module_id,
+      page_type: 'essay',
+      title: `REST Essay Lesson Page ${suffix}`,
+      content: `<p>REST essay lesson page content ${suffix}</p>`,
+      answers: JSON.stringify({
+        jump_to: 'next_page',
+        score: 1
+      })
+    });
+    assert.equal(restEssayPage.created, true);
+    assertLessonEssayPage(
+      restEssayPage,
+      restLesson,
+      `REST Essay Lesson Page ${suffix}`,
+      `REST essay lesson page content ${suffix}`
+    );
+
+    const updatedRestEssayPage = await callRestFunction(toRestFunctionName(contract, 'update_lesson_page'), {
+      course_id: courseId,
+      module_id: restLesson.course_module_id,
+      page_id: restEssayPage.page.page_id,
+      title: `Updated REST Essay Lesson Page ${suffix}`,
+      answers: JSON.stringify({
+        jump_to: 'end_of_lesson',
+        score: 1
+      })
+    });
+    assert.equal(updatedRestEssayPage.updated, true);
+    assertLessonEssayPage(
+      updatedRestEssayPage,
+      restLesson,
+      `Updated REST Essay Lesson Page ${suffix}`,
+      `REST essay lesson page content ${suffix}`
+    );
+
+    const deletedRestEssayPage = await callRestFunction(toRestFunctionName(contract, 'delete_lesson_page'), {
+      course_id: courseId,
+      module_id: restLesson.course_module_id,
+      page_id: restEssayPage.page.page_id
+    });
+    assert.equal(deletedRestEssayPage.deleted, true);
+
+    const restMatchingPage = await callRestFunction(toRestFunctionName(contract, 'create_lesson_page'), {
+      course_id: courseId,
+      module_id: restLesson.course_module_id,
+      page_type: 'matching',
+      title: `REST Matching Lesson Page ${suffix}`,
+      content: `<p>REST matching lesson page content ${suffix}</p>`,
+      answers: JSON.stringify({
+        correct_response: 'All pairs are correct.',
+        wrong_response: 'Review the pairs.',
+        pairs: [
+          { prompt: 'Formative', match: 'During learning' },
+          { prompt: 'Summative', match: 'After learning' }
+        ]
+      })
+    });
+    assert.equal(restMatchingPage.created, true);
+    assertLessonMatchingPage(
+      restMatchingPage,
+      restLesson,
+      `REST Matching Lesson Page ${suffix}`,
+      `REST matching lesson page content ${suffix}`,
+      [
+        ['Formative', 'During learning'],
+        ['Summative', 'After learning']
+      ]
+    );
+
+    const updatedRestMatchingPage = await callRestFunction(toRestFunctionName(contract, 'update_lesson_page'), {
+      course_id: courseId,
+      module_id: restLesson.course_module_id,
+      page_id: restMatchingPage.page.page_id,
+      title: `Updated REST Matching Lesson Page ${suffix}`,
+      answers: JSON.stringify({
+        correct_response: 'Correct matching.',
+        wrong_response: 'Try matching again.',
+        pairs: [
+          { prompt: 'Diagnostic', match: 'Before learning' },
+          { prompt: 'Formative', match: 'During learning' },
+          { prompt: 'Summative', match: 'After learning' }
+        ]
+      })
+    });
+    assert.equal(updatedRestMatchingPage.updated, true);
+    assertLessonMatchingPage(
+      updatedRestMatchingPage,
+      restLesson,
+      `Updated REST Matching Lesson Page ${suffix}`,
+      `REST matching lesson page content ${suffix}`,
+      [
+        ['Diagnostic', 'Before learning'],
+        ['Formative', 'During learning'],
+        ['Summative', 'After learning']
+      ]
+    );
+
+    const deletedRestMatchingPage = await callRestFunction(toRestFunctionName(contract, 'delete_lesson_page'), {
+      course_id: courseId,
+      module_id: restLesson.course_module_id,
+      page_id: restMatchingPage.page.page_id
+    });
+    assert.equal(deletedRestMatchingPage.deleted, true);
 
     const deletedRestPage = await callRestFunction(toRestFunctionName(contract, 'delete_lesson_page'), {
       course_id: courseId,

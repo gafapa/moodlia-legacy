@@ -1,16 +1,24 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * Update Lesson page operation.
  *
  * @package    local_moodlia
- * @copyright  2026
+ * @copyright  2026 Pablo Gallego
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -63,9 +71,13 @@ class update_lesson_page {
             !lesson_tools::is_truefalse_page($current) &&
             !lesson_tools::is_shortanswer_page($current) &&
             !lesson_tools::is_multichoice_page($current) &&
-            !lesson_tools::is_numerical_page($current)
+            !lesson_tools::is_numerical_page($current) &&
+            !lesson_tools::is_essay_page($current) &&
+            !lesson_tools::is_matching_page($current)
         ) {
-            throw new \invalid_parameter_exception('Only Lesson content, truefalse, shortanswer, multichoice, and numerical pages are supported for update_lesson_page.');
+            throw new \invalid_parameter_exception(
+                'Only Lesson content, essay, matching, truefalse, shortanswer, multichoice, and numerical pages are supported for update_lesson_page.'
+            );
         }
 
         if (
@@ -159,7 +171,7 @@ class update_lesson_page {
                 $answers,
                 0
             );
-        } else {
+        } elseif (lesson_tools::is_numerical_page($current)) {
             if ($branchesjson !== null && trim($branchesjson) !== '') {
                 throw new \invalid_parameter_exception('branches is only supported for content Lesson pages.');
             }
@@ -172,6 +184,46 @@ class update_lesson_page {
                 : lesson_tools::decode_numerical_answers($answersjson);
 
             $properties = lesson_tools::numerical_page_properties(
+                $lesson,
+                $title ?? (string) ($current->title ?? ''),
+                $content ?? (string) ($current->contents ?? ''),
+                $contentformat ?? (int) ($current->contentsformat ?? FORMAT_HTML),
+                $answers,
+                0
+            );
+        } elseif (lesson_tools::is_essay_page($current)) {
+            if ($branchesjson !== null && trim($branchesjson) !== '') {
+                throw new \invalid_parameter_exception('branches is only supported for content Lesson pages.');
+            }
+            if ($displayinmenu !== null || $horizontal !== null) {
+                throw new \invalid_parameter_exception('display_in_menu and horizontal are only supported for content Lesson pages.');
+            }
+
+            $answers = $answersjson === null
+                ? lesson_tools::essay_answers_from_page($page)
+                : lesson_tools::decode_essay_answers($answersjson);
+
+            $properties = lesson_tools::essay_page_properties(
+                $lesson,
+                $title ?? (string) ($current->title ?? ''),
+                $content ?? (string) ($current->contents ?? ''),
+                $contentformat ?? (int) ($current->contentsformat ?? FORMAT_HTML),
+                $answers,
+                0
+            );
+        } else {
+            if ($branchesjson !== null && trim($branchesjson) !== '') {
+                throw new \invalid_parameter_exception('branches is only supported for content Lesson pages.');
+            }
+            if ($displayinmenu !== null || $horizontal !== null) {
+                throw new \invalid_parameter_exception('display_in_menu and horizontal are only supported for content Lesson pages.');
+            }
+
+            $answers = $answersjson === null
+                ? lesson_tools::matching_answers_from_page($page)
+                : lesson_tools::decode_matching_answers($answersjson);
+
+            $properties = lesson_tools::matching_page_properties(
                 $lesson,
                 $title ?? (string) ($current->title ?? ''),
                 $content ?? (string) ($current->contents ?? ''),

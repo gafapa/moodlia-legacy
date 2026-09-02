@@ -12,3 +12,12 @@ screenshots/
 tmp/
 *.log
 *.local
+
+# The website shell under dist/ is source-controlled. These outputs are rebuilt.
+/dist/operations.generated.js
+/dist/icons/
+/dist/downloads/
+
+# Legacy website path and local release artifacts are never source-controlled.
+/site/
+/empaquetado/

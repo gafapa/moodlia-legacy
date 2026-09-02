@@ -1,7 +1,7 @@
 {
   "name": "moodlia",
-  "version": "0.1.17",
-  "description": "Command-line client for the MoodlIA Moodle REST API.",
+  "version": "0.1.19",
+  "description": "Command-line and Node client for MoodlIA Moodle automation over REST and MCP.",
   "type": "module",
   "license": "GPL-3.0-or-later",
   "author": "Pablo Gallego",
@@ -39,6 +39,7 @@
     "moodlia",
     "cli",
     "rest",
+    "mcp",
     "automation"
   ],
   "engines": {

@@ -1,16 +1,24 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * External service declarations.
  *
  * @package    local_moodlia
- * @copyright  2026
+ * @copyright  2026 Pablo Gallego
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -32,6 +40,46 @@ $functions = [
         'type' => 'read',
         'ajax' => true,
         'capabilities' => 'local/moodlia:useapi',
+    ],
+    'local_moodlia_list_plugins' => [
+        'classname' => 'local_moodlia\external\list_plugins',
+        'methodname' => 'execute',
+        'description' => 'Return an administrative Moodle plugin inventory.',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'local/moodlia:useapi,local/moodlia:manageplugins',
+    ],
+    'local_moodlia_get_plugin_details' => [
+        'classname' => 'local_moodlia\external\get_plugin_details',
+        'methodname' => 'execute',
+        'description' => 'Return administrative metadata for one Moodle plugin.',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'local/moodlia:useapi,local/moodlia:manageplugins',
+    ],
+    'local_moodlia_get_plugin_dependencies' => [
+        'classname' => 'local_moodlia\external\get_plugin_dependencies',
+        'methodname' => 'execute',
+        'description' => 'Return resolved and reverse dependencies for one Moodle plugin.',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'local/moodlia:useapi,local/moodlia:manageplugins',
+    ],
+    'local_moodlia_check_plugin_updates' => [
+        'classname' => 'local_moodlia\external\check_plugin_updates',
+        'methodname' => 'execute',
+        'description' => 'Return cached plugin updates and optionally refresh update information.',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'local/moodlia:useapi,local/moodlia:manageplugins',
+    ],
+    'local_moodlia_set_plugin_enabled' => [
+        'classname' => 'local_moodlia\external\set_plugin_enabled',
+        'methodname' => 'execute',
+        'description' => 'Enable or disable one compatible Moodle plugin.',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/moodlia:useapi,local/moodlia:manageplugins',
     ],
     'local_moodlia_get_courses' => [
         'classname' => 'local_moodlia\external\get_courses',
@@ -1904,6 +1952,11 @@ $services = [
         'functions' => [
             'local_moodlia_get_current_user',
             'local_moodlia_get_moodlia_status',
+            'local_moodlia_list_plugins',
+            'local_moodlia_get_plugin_details',
+            'local_moodlia_get_plugin_dependencies',
+            'local_moodlia_check_plugin_updates',
+            'local_moodlia_set_plugin_enabled',
             'local_moodlia_get_courses',
             'local_moodlia_get_course_categories',
             'local_moodlia_create_course_category',

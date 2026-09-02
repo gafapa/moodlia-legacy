@@ -1,8 +1,8 @@
 # moodlia
 
-Command-line client for the MoodlIA Moodle REST API.
+Command-line and Node client for MoodlIA Moodle automation over REST and MCP.
 
-This package contains the public Node CLI, the reusable REST client, generated TypeScript declarations, and the canonical command contract needed by external users. It does not include server-side Moodle plugin files, deployment scripts, tests, or browser automation.
+This package contains the public Node CLI, the reusable REST/MCP client, generated TypeScript declarations, and the canonical command contract needed by external users. It does not include server-side Moodle plugin files, deployment scripts, tests, or browser automation.
 
 The package is intentionally small: install the Moodle plugin on the server first, then use this package from developer machines, CI jobs, or automation workers.
 
@@ -87,7 +87,7 @@ moodlia create-question --category-id 12 --context-id 34 --question-type multich
 
 ## Capabilities
 
-The package currently exposes 235 CLI commands generated from the shared operation contract:
+The package currently exposes 240 CLI commands generated from the shared operation contract:
 
 - Course and category management: 22 commands.
 - Calendar, enrolments, groups, and completion: 27 commands.
@@ -95,6 +95,7 @@ The package currently exposes 235 CLI commands generated from the shared operati
 - Assignments, forums, glossaries, wikis, and books: 57 commands.
 - Choice, Database, Feedback, Lesson, and Workshop: 49 commands.
 - Question banks and quiz workflows: 34 commands.
+- Moodle plugin inventory and state: 5 commands.
 - Other utility operations: 31 commands.
 
 Run `moodlia --help` for the exact command list. The bundled `contract/operations.json` file contains parameter schemas, return schemas, command names, and enum values.
@@ -193,6 +194,24 @@ const currentUser = await client.get_current_user();
 const courses = await client.get_courses({ limit: 10 });
 ```
 
+Use the same canonical methods through the Moodle-hosted MCP endpoint:
+
+```js
+import { createMoodleMcpClient } from 'moodlia';
+import contract from 'moodlia/contract' with { type: 'json' };
+
+const client = createMoodleMcpClient({
+  baseUrl: process.env.MOODLE_BASE_URL,
+  token: process.env.MOODLE_REST_TOKEN,
+  contract
+});
+
+const tools = await client.transport.listTools();
+const courses = await client.get_courses({ limit: 10 });
+```
+
+The MCP transport lazily negotiates the protocol on its first request. It can also receive an explicit `endpoint` instead of `baseUrl`.
+
 When JSON module imports are not available, load the contract from a local path:
 
 ```js
@@ -206,8 +225,8 @@ const contract = loadContractFromFile('./node_modules/moodlia/contract/operation
 The npm package includes only:
 
 - `cli/moodlia.mjs`: executable command-line entry point.
-- `client/moodle-rest-client.mjs`: reusable REST client.
-- `client/moodle-rest-client.d.ts`: TypeScript declarations for the REST client.
+- `client/moodle-rest-client.mjs`: reusable REST/MCP client.
+- `client/moodle-rest-client.d.ts`: TypeScript declarations for the REST/MCP client.
 - `client/generated/operation-types.d.ts`: generated request and response types per operation.
 - `contract/operations.json`: publishable command contract.
 - `README.md` and `LICENSE`.
@@ -229,4 +248,4 @@ This package is generated from the main MoodlIA development repository with:
 npm run npm:sync
 ```
 
-Do not edit generated files in this package manually. Change the root CLI, REST client, or canonical contract, then sync again.
+Do not edit generated files in this package manually. Change the root CLI, shared client, or canonical contract, then sync again.

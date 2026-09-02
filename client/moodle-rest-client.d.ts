@@ -25,7 +25,10 @@ export interface MoodleOperationDefinition {
 }
 
 export interface MoodleTransport {
-  callFunction(functionName: string, parameters?: Record<string, unknown>): Promise<unknown>;
+  callFunction?(functionName: string, parameters?: Record<string, unknown>): Promise<unknown>;
+  callOperation?(operationName: string, parameters?: Record<string, unknown>): Promise<unknown>;
+  parameterEncoding?: 'form' | 'json';
+  supportsCanonicalOperations?: boolean;
 }
 
 export interface RestTransportOptions {
@@ -54,6 +57,26 @@ export interface MoodleRestClientOptions extends RestTransportOptions {
   validateResponses?: boolean;
 }
 
+export interface McpTransportOptions {
+  baseUrl?: string;
+  endpoint?: string | null;
+  token?: string;
+  timeoutMs?: number;
+  fetchImplementation?: typeof fetch;
+  allowInsecure?: boolean;
+  protocolVersion?: string;
+  clientInfo?: {
+    name: string;
+    version: string;
+  };
+}
+
+export interface MoodleMcpClientOptions extends McpTransportOptions {
+  contract?: MoodleOperationContract | null;
+  transport?: MoodleTransport | null;
+  validateResponses?: boolean;
+}
+
 export interface MoodleClientInstance {
   readonly contract: MoodleOperationContract;
   readonly transport: MoodleTransport;
@@ -66,8 +89,22 @@ export interface MoodleClientInstance {
 }
 
 export class RestTransport implements MoodleTransport {
+  readonly parameterEncoding: 'form';
+  readonly supportsCanonicalOperations: false;
   constructor(options?: RestTransportOptions);
   callFunction(functionName: string, parameters?: Record<string, unknown>): Promise<unknown>;
+  callOperation(operationName: string, parameters?: Record<string, unknown>): Promise<unknown>;
+}
+
+export class McpTransport implements MoodleTransport {
+  constructor(options?: McpTransportOptions);
+  readonly endpoint: string;
+  readonly parameterEncoding: 'json';
+  readonly supportsCanonicalOperations: true;
+  readonly protocolVersion: string;
+  initialize(): Promise<Record<string, unknown>>;
+  ping(): Promise<unknown>;
+  listTools(): Promise<unknown[]>;
   callOperation(operationName: string, parameters?: Record<string, unknown>): Promise<unknown>;
 }
 
@@ -110,7 +147,8 @@ export function normalizeClientError(
 ): MoodleClientError;
 export function buildContractParameters(
   operation: MoodleOperationDefinition,
-  parameters?: Record<string, unknown>
+  parameters?: Record<string, unknown>,
+  options?: { encoding?: 'form' | 'json' }
 ): Record<string, unknown>;
 export function validateContractResponse(
   operation: MoodleOperationDefinition & { returns?: unknown },
@@ -118,3 +156,4 @@ export function validateContractResponse(
 ): unknown;
 export function createMoodleClient(options: MoodleClientFactoryOptions): MoodleClientInstance;
 export function createMoodleRestClient(options?: MoodleRestClientOptions): MoodleClientInstance | RestTransport;
+export function createMoodleMcpClient(options?: MoodleMcpClientOptions): MoodleClientInstance | McpTransport;

@@ -1,16 +1,24 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * Create Lesson page external function.
  *
  * @package    local_moodlia
- * @copyright  2026
+ * @copyright  2026 Pablo Gallego
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -45,7 +53,12 @@ class create_lesson_page extends external_api {
             'after_page_id' => new external_value(PARAM_INT, 'Insert after this Lesson page id, or 0 for first', VALUE_DEFAULT, 0),
             'display_in_menu' => new external_value(PARAM_BOOL, 'Whether the page appears in the Lesson menu', VALUE_DEFAULT, true),
             'horizontal' => new external_value(PARAM_BOOL, 'Whether branch buttons use horizontal layout', VALUE_DEFAULT, true),
-            'page_type' => new external_value(PARAM_ALPHA, 'Lesson page type: content, truefalse, or multichoice', VALUE_DEFAULT, 'content'),
+            'page_type' => new external_value(
+                PARAM_ALPHA,
+                'Lesson page type: content, essay, matching, multichoice, numerical, shortanswer, or truefalse',
+                VALUE_DEFAULT,
+                'content'
+            ),
             'answers' => new external_value(PARAM_RAW, 'Optional JSON object with answer definitions for question pages', VALUE_DEFAULT, null, NULL_ALLOWED),
         ]);
     }

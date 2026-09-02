@@ -86,6 +86,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: moodle-plugin-ci validate
 
+      - name: PHP coding style
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci phpcs --max-warnings 0
+
+      - name: PHP documentation
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci phpdoc --max-warnings 0
+
       - name: Check upgrade savepoints
         if: ${{ !cancelled() }}
         run: moodle-plugin-ci savepoints

@@ -1,8 +1,19 @@
 # MoodlIA Moodle API/CLI Automation
 
+> **Archived migration source:** this repository is retained for history only. It is not a canonical release source or safety copy. Active development lives in `moodlia-moodle-plugin`, `moodlia-cli`, `moodle-core-cli`, `moodlia-skills`, and `moodlia-website`.
+
 This repository contains the MoodlIA Moodle local plugin (`local_moodlia`), the shared operation contract, deployment automation, browser/API test automation, and a Node CLI that calls the Moodle REST API directly.
 
 The project keeps API, CLI, and MCP tools aligned through one canonical operation contract. Moodle business behavior lives in PHP operation classes and uses Moodle core APIs instead of plugin-owned database tables or raw SQL.
+
+## Release Versions
+
+MoodlIA has two intentionally independent release streams:
+
+- Moodle plugin: `0.1.188`, defined in `plugin/moodlia/version.php`.
+- npm CLI and Node client: `0.1.19`, defined in the root `package.json`.
+
+The numbers do not need to match because the plugin and npm package can be published independently. Always identify the artifact as either **plugin** or **npm** in release notes, filenames, and deployment records. See the [versioning policy](docs/install-release-guide.md#versioning-policy).
 
 ## Design Goals
 
@@ -15,7 +26,7 @@ The project keeps API, CLI, and MCP tools aligned through one canonical operatio
 
 ## Documentation Map
 
-- [Project website](site/index.html): installer-oriented overview and technical architecture page.
+- [Project website](dist/index.html): concise overview of MoodlIA capabilities, installation, architecture, features, and optional skills.
 - [Moodle plugin guidelines](docs/moodle-plugin-guidelines.md): Moodle API usage rules, plugin boundaries, security, privacy, files, upgrades, and anti-patterns.
 - [Architecture](docs/architecture.md): shared core model, data flow, interface adapters, contract ownership, and reuse rules.
 - [Interface contract](docs/interface-contract.md): canonical operations, parameter and return rules, naming conventions, error handling, and parity requirements.
@@ -60,7 +71,7 @@ The current implementation includes:
 - Canonical enum constraints for supported enrolment role archetypes (`student`, `teacher`, `editingteacher`), module types (`assign`, `book`, `choice`, `data`, `feedback`, `lesson`, `lti`, `page`, `folder`, `forum`, `glossary`, `label`, `qbank`, `quiz`, `resource`, `subsection`, `url`, `wiki`, `workshop`), and question types (`truefalse`, `shortanswer`, `multichoice`, `numerical`, `essay`, `matching`, `description`, `randomsamatch`, `gapselect`, `ddwtos`, `ordering`, `multianswer`, `ddmarker`, `ddimageortext`, `calculatedsimple`, `calculated`, `calculatedmulti`).
 - MCP tool schema parity manifest under `automation/manifests/mcp-tool-schemas.json`.
 - Manifest generation from `contract/operations.json` through `npm run manifests:generate` and `npm run manifests:check`.
-- Shared REST client at `client/moodle-rest-client.mjs` with TypeScript declarations in `client/moodle-rest-client.d.ts`.
+- Shared Node client at `client/moodle-rest-client.mjs` with REST and MCP transports, lazy MCP lifecycle negotiation, canonical error normalization, and TypeScript declarations in `client/moodle-rest-client.d.ts`.
 - Generated per-operation TypeScript request/response declarations in `client/generated/operation-types.d.ts`, refreshed with `npm run types:generate` and checked with `npm run types:check`.
 - Static parity checks for the contract, Moodle service declarations, CLI commands, generated TypeScript operation types, and forbidden direct database access patterns.
 - Runtime transport parity checks compare REST, MCP, and CLI result shapes for stable read operations.
@@ -74,8 +85,9 @@ The current implementation includes:
 - MCP JSON-RPC errors expose the automation error contract under `error.data.code`; JSON-RPC `error.code` is protocol metadata.
 - Playwright browser checks for Moodle login, course index visibility, generated course visibility, participants, groups, gradebook, activity subelements, files, question banks, quiz preview, and an in-progress quiz attempt.
 - Node CLI at `cli/moodle-mcp.mjs` that maps contract operations to kebab-case commands, validates arguments through the shared contract parameter builder, and calls Moodle REST through the shared client.
-- Generated public npm package at `packages/moodlia` with the `moodlia` binary, REST client, TypeScript declarations, filtered operation contract, README, and license.
+- Generated public npm package at `packages/moodlia` with the `moodlia` binary, REST/MCP client, TypeScript declarations, filtered operation contract, README, and license.
 - High-level course workflow operations for portable course blueprints, blueprint restore/application, course-structure copy, manual enrolment synchronisation, publish-state transitions, and course readiness audit.
+- Administrative plugin inventory, plugin details, dependency resolution, update inspection, and guarded enabled-state changes protected by `local/moodlia:manageplugins`; remote plugin installation, code replacement, and uninstallation remain intentionally unsupported.
 
 REST, MCP, and the CLI use the same `MOODLE_REST_TOKEN`. The CLI does not call MCP; it uses `MOODLE_BASE_URL` and `MOODLE_REST_TOKEN`, then resolves `webservice/rest/server.php` below the configured Moodle URL, including any installation subdirectory, and invokes the matching `local_moodlia_*` function.
 
@@ -92,6 +104,7 @@ node cli/moodle-mcp.mjs create-group --course-id 42 --name "Team A" --format jso
 node cli/moodle-mcp.mjs create-module --course-id 42 --section-number 1 --module-type page --name "Reading" --options "{\"content\":\"<p>Hello</p>\"}" --format json
 node cli/moodle-mcp.mjs create-module --course-id 42 --section-number 0 --module-type qbank --name "MoodlIA Question Bank" --format json
 node cli/moodle-mcp.mjs audit-course --course-id 42 --format json
+node cli/moodle-mcp.mjs list-plugins --source additional --format json
 node cli/moodle-mcp.mjs set-course-publish-state --course-id 42 --publish-state published --format json
 ```
 
