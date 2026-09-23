@@ -214,3 +214,9 @@ The design follows these official Moodle developer resources:
 ## Implementation Rule
 
 A new Moodle operation should not be considered complete until REST, MCP, CLI, and parity tests all derive from or validate against the same canonical operation contract. Browser tests verify Moodle-visible effects, but the Moodle plugin does not need its own operation UI.
+
+## License
+
+Copyright (C) 2026 Pablo Gallego.
+
+This project is free software released under the GNU General Public License version 3 or later. See `LICENSE`.
